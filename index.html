@@ -845,8 +845,8 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
         </div>
       </div>
       <div class="mode-toggle" id="modeToggle">
-        <button type="button" id="modeTableBtn" class="active" onclick="setFakturMode('table')">☰ Tabel</button>
-        <button type="button" id="modeCardBtn" onclick="setFakturMode('card')">▦ Kartu</button>
+        <button type="button" id="modeTableBtn" onclick="setFakturMode('table')">☰ Tabel</button>
+        <button type="button" id="modeCardBtn" class="active" onclick="setFakturMode('card')">▦ Kartu</button>
       </div>
     </div>
 
@@ -1062,8 +1062,8 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   var s4KeyBuilt = "";
   var qtyOp = null;
   var qtyThreshold = null;
-  var currentTab = "s0";
-  var fakturMode = "table";
+  var currentTab = "s1";
+  var fakturMode = "card";
   var IDB_SUPPORTED = (() => {
     try {
       return typeof indexedDB !== "undefined" && typeof Dexie !== "undefined";
@@ -1544,6 +1544,31 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       }
     });
   }
+  function rowMonthKey(r) {
+    return String(r.bulan || "").trim() || (typeof monthKey === "function" ? monthKey(r.tanggal || r.Tanggal) : "") || "";
+  }
+  /** Gabung data: bulan yang ada di file baru diganti, bulan lain dipertahankan. */
+  function mergeTxByMonth(existing, incoming) {
+    const monthsInNew = new Set();
+    for (const r of incoming) {
+      const m = rowMonthKey(r);
+      if (m) monthsInNew.add(m);
+    }
+    const kept = (existing || []).filter((r) => {
+      const m = rowMonthKey(r);
+      return !m || !monthsInNew.has(m);
+    });
+    const cleaned = incoming.map((r) => {
+      const copy = Object.assign({}, r);
+      delete copy.id;
+      return copy;
+    });
+    return { merged: kept.concat(cleaned), monthsReplaced: [...monthsInNew] };
+  }
+  function unionMetaLists(a, b) {
+    const s = new Set([...(a || []), ...(b || [])].map(String).filter(Boolean));
+    return [...s].sort();
+  }
   async function processFile() {
     if (isProcessingFile) {
       setStatus("\u23F3 File sedang diproses, mohon tunggu...");
@@ -1580,29 +1605,63 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
         throw new Error("Tidak ada baris data transaksi valid pada file ini.");
       }
       if (gen !== _parseGen) return;
-      setStatus("Menyimpan " + parsed.rows.length.toLocaleString("id-ID") + " baris data...");
-      rows = parsed.rows;
+      setStatus("Menggabungkan " + parsed.rows.length.toLocaleString("id-ID") + " baris data...");
       filters = { month: "", sales: "", product: "", payment: "" };
       searchQuery = "";
       const searchEl = document.getElementById("searchInput");
       if (searchEl) searchEl.value = "";
       document.getElementById("quickSearch")?.classList.remove("has-value");
+      let existingRows = [];
+      let oldProducts = [], oldSales = [], oldMonths = [];
       if (useIDB && db) {
         try {
-          await db.tx.clear();
-          await db.tx.bulkPut(parsed.rows);
-          await db.meta.put({ key: "products", value: parsed.products });
-          await db.meta.put({ key: "sales", value: parsed.sales });
-          await db.meta.put({ key: "months", value: parsed.months });
+          existingRows = await db.tx.toArray();
+          oldProducts = (await db.meta.get("products") || {}).value || [];
+          oldSales = (await db.meta.get("sales") || {}).value || [];
+          oldMonths = (await db.meta.get("months") || {}).value || [];
+        } catch (e) {
+          console.warn("Baca data lama gagal:", e);
+          existingRows = (rows && rows.length) ? rows.slice() : [];
+        }
+      } else if (rows && rows.length) {
+        existingRows = rows.slice();
+      }
+      const { merged, monthsReplaced } = mergeTxByMonth(existingRows, parsed.rows);
+      const metaProducts = unionMetaLists(oldProducts, parsed.products);
+      const metaSales = unionMetaLists(oldSales, parsed.sales);
+      const metaMonths = unionMetaLists(oldMonths, parsed.months).sort().reverse();
+      rows = merged;
+      if (useIDB && db) {
+        try {
+          if (monthsReplaced.length) {
+            await db.tx.where("bulan").anyOf(monthsReplaced).delete();
+          }
+          const toPut = parsed.rows.map((r) => {
+            const copy = Object.assign({}, r);
+            delete copy.id;
+            return copy;
+          });
+          await db.tx.bulkPut(toPut);
+          await db.meta.put({ key: "products", value: metaProducts });
+          await db.meta.put({ key: "sales", value: metaSales });
+          await db.meta.put({ key: "months", value: metaMonths });
+          rows = await db.tx.toArray();
           schedulePushToCloud();
         } catch (e) {
           console.warn("IDB write failed, continuing in-memory:", e);
           useIDB = false;
         }
       }
-      populateFiltersFromMeta(parsed);
+      populateFiltersFromMeta({ products: metaProducts, sales: metaSales, months: metaMonths });
       await postParseDone(gen);
-      showToast("\u2705 Berhasil memproses " + parsed.rows.length.toLocaleString("id-ID") + " baris data!", "success");
+      const keptOther = Math.max(0, (rows && rows.length ? rows.length : merged.length) - parsed.rows.length);
+      const msgBulan = monthsReplaced.length
+        ? " (bulan diganti: " + monthsReplaced.map((m) => (typeof monthLabel === "function" ? monthLabel(m) : m)).join(", ") + ")"
+        : "";
+      const extra = keptOther > 0
+        ? " · data bulan lain tetap: " + keptOther.toLocaleString("id-ID") + " baris"
+        : "";
+      showToast("\u2705 " + parsed.rows.length.toLocaleString("id-ID") + " baris diproses · total " + (rows ? rows.length : merged.length).toLocaleString("id-ID") + " baris" + msgBulan + extra, "success");
     } catch (err) {
       console.error("Error proses Excel:", err);
       const msg = err && (err.message || String(err));
@@ -1660,7 +1719,8 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       if (resEl) resEl.style.display = "block";
       const saveBtn = document.getElementById("save");
       if (saveBtn) saveBtn.disabled = totalRows === 0;
-      show("s0", document.querySelector(".header-tabs button"));
+      setFakturMode(fakturMode === "table" ? "table" : "card");
+      show("s1");
       setStatus("Berhasil diproses: " + _parseFileName + " (" + totalRows.toLocaleString("id-ID") + " baris)");
       closeDd();
     } catch (e) {
@@ -2413,6 +2473,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     fakturMode = mode === "card" ? "card" : "table";
     document.getElementById("modeTableBtn").classList.toggle("active", fakturMode === "table");
     document.getElementById("modeCardBtn").classList.toggle("active", fakturMode === "card");
+    try { localStorage.setItem("fp_faktur_mode", fakturMode); } catch (e) {}
     s1KeyBuilt = "";
     if (currentTab === "s1") buildPanelS1();
   }
@@ -3850,7 +3911,12 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       document.getElementById("save").disabled = false;
       buildColPicker();
       await refreshAfterDataChange();
-      show("s0", document.querySelector(".header-tabs button"));
+      try {
+        const savedMode = localStorage.getItem("fp_faktur_mode");
+        if (savedMode === "table" || savedMode === "card") fakturMode = savedMode;
+      } catch (e) {}
+      setFakturMode(fakturMode);
+      show("s1");
       setStatus("Data dari IndexedDB dimuat: " + total.toLocaleString("id-ID") + " baris.");
     } catch (e) {
       console.warn("restoreFromDB gagal", e);
@@ -4115,6 +4181,13 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       else applyTheme("dark");
     } catch (e) {
       applyTheme("dark");
+    }
+    try {
+      const savedMode = localStorage.getItem("fp_faktur_mode");
+      if (savedMode === "table" || savedMode === "card") fakturMode = savedMode;
+      else fakturMode = "card";
+    } catch (e) {
+      fakturMode = "card";
     }
     buildColPicker();
     await initDB();
