@@ -9,8 +9,22 @@
 <meta property="og:description" content="Aplikasi rekap dan filter faktur penjualan dengan dukungan Excel dan IndexedDB." />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
+
+<!-- PWA: installable app + icon -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#1e293b" />
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Faktur FITRI" />
+<meta name="mobile-web-app-capable" content="yes" />
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
   // Immediate failsafe handlers so Theme toggle and Menu buttons are ALWAYS 100% responsive
   function applyTheme(theme){
@@ -147,6 +161,15 @@ header{background:var(--header-bg);color:var(--header-text);padding:6px 14px;pos
 .header-actions{display:flex;align-items:center;gap:8px}
 .theme-btn{background:transparent;border:1px solid rgba(255,255,255,.35);color:inherit;padding:4px 10px;font-size:12px;border-radius:6px;cursor:pointer;font-weight:600;position:relative;z-index:51;user-select:none}
 .theme-btn:hover{background:rgba(255,255,255,.12)}
+
+.cloud-status{display:flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid rgba(255,255,255,.35);border-radius:6px;font-size:11px;font-weight:600;letter-spacing:.02em;color:inherit;cursor:default;user-select:none}
+.cloud-status .cloud-dot{width:7px;height:7px;border-radius:50%;background:#94a3b8;box-shadow:0 0 0 rgba(0,0,0,0);transition:background .2s}
+.cloud-status[data-state="online"] .cloud-dot{background:#22c55e;box-shadow:0 0 6px #22c55e}
+.cloud-status[data-state="syncing"] .cloud-dot{background:#eab308;animation:cloudPulse 1s ease-in-out infinite}
+.cloud-status[data-state="offline"] .cloud-dot{background:#94a3b8}
+.cloud-status[data-state="error"] .cloud-dot{background:#ef4444;box-shadow:0 0 6px #ef4444}
+@keyframes cloudPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media(max-width:760px){.cloud-status .cloud-label{display:none}.cloud-status{padding:4px 7px}}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 10px}
 .kpis.fitri-mode{grid-template-columns:minmax(100px,.65fr) minmax(470px,3.7fr) minmax(100px,.65fr) minmax(125px,.8fr)}
@@ -533,6 +556,9 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
         <button onclick="show('s1',this)">Faktur Fitri</button>
         <button onclick="show('s2',this)">Penjualan Fitri</button>
       </nav>
+      <span class="cloud-status" id="cloudStatus" data-state="offline" title="Status sinkronisasi cloud">
+        <span class="cloud-dot"></span><span class="cloud-label">Cloud</span>
+      </span>
       <button type="button" class="theme-btn" id="themeBtn" onclick="toggleTheme(event)" title="Mode gelap / terang">☀️</button>
       <div class="dd" id="menuDd">
         <button type="button" class="dd-toggle" id="menuToggleBtn" onclick="toggleDd(event)"><span>☰ MENU</span><span class="chev">▼</span></button>
@@ -969,6 +995,127 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
   })();
   var db = null;
   var useIDB = false;
+
+  // ===== Cloud sync (Supabase) =====================================
+  var SUPABASE_URL = "https://fdjgsybhsdavbjgnxeve.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_DagU-Vwmj-3cVBpx_XBHtg_6mpa1cjH";
+  var CLOUD_TABLE = "fp_faktur_data";
+  var CLOUD_ROW_ID = "main";
+  var supa = null;
+  var cloudReady = false;
+  var _pushTimer = null;
+  var _lastAppliedRemoteTs = 0;
+  var _cloudChannel = null;
+  var _isApplyingRemote = false;
+
+  function setCloudStatus(state, title) {
+    var el = document.getElementById("cloudStatus");
+    if (!el) return;
+    el.dataset.state = state;
+    var labels = { online: "Online", syncing: "Menyinkron...", offline: "Offline", error: "Gagal sinkron" };
+    var lbl = el.querySelector(".cloud-label");
+    if (lbl) lbl.textContent = labels[state] || "Cloud";
+    el.title = title || (
+      state === "online" ? "Tersambung ke cloud — data tersinkron di semua perangkat" :
+      state === "syncing" ? "Sedang menyinkronkan data..." :
+      state === "error" ? "Gagal terhubung ke cloud, memakai data lokal" :
+      "Tidak terhubung ke cloud"
+    );
+  }
+
+  function initCloud() {
+    try {
+      if (!window.supabase || !window.supabase.createClient) throw new Error("supabase-js belum termuat");
+      supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        realtime: { params: { eventsPerSecond: 5 } }
+      });
+      cloudReady = true;
+      setCloudStatus("offline", "Menghubungkan ke cloud...");
+    } catch (e) {
+      console.warn("Cloud init gagal:", e);
+      cloudReady = false;
+      setCloudStatus("error", "Cloud tidak tersedia — bekerja secara lokal");
+    }
+  }
+
+  function schedulePushToCloud() {
+    if (!cloudReady || _isApplyingRemote) return;
+    clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(pushToCloud, 1000);
+  }
+
+  async function pushToCloud() {
+    if (!cloudReady || !supa || !useIDB || !db) return;
+    try {
+      setCloudStatus("syncing");
+      const txAll = await db.tx.toArray();
+      const products = (await db.meta.get("products") || {}).value || [];
+      const sales = (await db.meta.get("sales") || {}).value || [];
+      const months = (await db.meta.get("months") || {}).value || [];
+      const nowIso = new Date().toISOString();
+      const { error } = await supa.from(CLOUD_TABLE).upsert({
+        id: CLOUD_ROW_ID,
+        payload: { tx: txAll, products, sales, months },
+        updated_at: nowIso
+      });
+      if (error) throw error;
+      _lastAppliedRemoteTs = new Date(nowIso).getTime();
+      setCloudStatus("online");
+    } catch (e) {
+      console.warn("Push ke cloud gagal:", e);
+      setCloudStatus("error");
+    }
+  }
+
+  async function pullFromCloud(force) {
+    if (!cloudReady || !supa) return false;
+    try {
+      const { data, error } = await supa.from(CLOUD_TABLE).select("payload,updated_at").eq("id", CLOUD_ROW_ID).maybeSingle();
+      if (error) throw error;
+      setCloudStatus("online");
+      if (!data || !data.payload) return false;
+      const remoteTs = new Date(data.updated_at).getTime();
+      if (!force && remoteTs <= _lastAppliedRemoteTs) return false;
+      if (!useIDB || !db) return false;
+      const p = data.payload;
+      _isApplyingRemote = true;
+      try {
+        await db.tx.clear();
+        if (p.tx && p.tx.length) await db.tx.bulkPut(p.tx);
+        await db.meta.put({ key: "products", value: p.products || [] });
+        await db.meta.put({ key: "sales", value: p.sales || [] });
+        await db.meta.put({ key: "months", value: p.months || [] });
+      } finally {
+        _isApplyingRemote = false;
+      }
+      _lastAppliedRemoteTs = remoteTs;
+      return true;
+    } catch (e) {
+      console.warn("Pull dari cloud gagal:", e);
+      setCloudStatus("error");
+      return false;
+    }
+  }
+
+  function subscribeCloudChanges() {
+    if (!cloudReady || !supa) return;
+    try {
+      _cloudChannel = supa
+        .channel("fp_faktur_data_changes")
+        .on("postgres_changes", { event: "*", schema: "public", table: CLOUD_TABLE }, async () => {
+          const changed = await pullFromCloud(false);
+          if (changed) {
+            await restoreFromDB();
+            showToast("Data diperbarui dari perangkat lain.", "info");
+          }
+        })
+        .subscribe();
+    } catch (e) {
+      console.warn("Realtime subscribe gagal:", e);
+    }
+  }
+  // ===================================================================
+
   async function initDB() {
     if (!IDB_SUPPORTED) return;
     try {
@@ -1325,6 +1472,7 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
           await db.meta.put({ key: "products", value: parsed.products });
           await db.meta.put({ key: "sales", value: parsed.sales });
           await db.meta.put({ key: "months", value: parsed.months });
+          schedulePushToCloud();
         } catch (e) {
           console.warn("IDB write failed, continuing in-memory:", e);
           useIDB = false;
@@ -1652,6 +1800,7 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
             await db.transaction("rw", db.tx, async () => {
               for (const id of ids) await db.tx.update(id, { hargaBeli: hargaBaru });
             });
+            schedulePushToCloud();
           } else {
             targets.forEach((r) => {
               r.hargaBeli = hargaBaru;
@@ -1881,6 +2030,7 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
             } catch (e) {
             }
           }
+          schedulePushToCloud();
           await refreshAfterDataChange();
           setStatus("Data bulan " + monthLabel(m) + " berhasil dihapus: " + count.toLocaleString("id-ID") + " baris.");
           showToast("Data bulan " + monthLabel(m) + " berhasil dihapus (" + count.toLocaleString("id-ID") + " baris).", "info");
@@ -3677,6 +3827,10 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
     const qdd = document.getElementById("qtyFilterPicker");
     if (qdd && qdd.classList.contains("open") && !qdd.contains(e.target)) closeQtyDd();
   });
+  window.addEventListener("online", () => {
+    if (cloudReady) { setCloudStatus("syncing"); pullFromCloud(false).then((ch) => { if (ch) restoreFromDB(); setCloudStatus("online"); }); }
+  });
+  window.addEventListener("offline", () => setCloudStatus("offline", "Tidak ada koneksi internet"));
   window.addEventListener("resize", () => {
     if (document.getElementById("panel_s0")?.offsetParent !== null) {
       requestAnimationFrame(s0Render);
@@ -3699,8 +3853,27 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
     }
     buildColPicker();
     await initDB();
+    initCloud();
+    if (cloudReady) {
+      const pulled = await pullFromCloud(true);
+      if (!pulled && useIDB && db) {
+        // Tidak ada data di cloud tapi ada data lokal (mis. dari sesi sebelum
+        // fitur cloud aktif) -> unggah data lokal supaya perangkat lain ikut melihatnya.
+        try {
+          const localCount = await db.tx.count();
+          if (localCount > 0) schedulePushToCloud();
+        } catch (e) {}
+      }
+      subscribeCloudChanges();
+    }
     await restoreFromDB();
     updateGearMenuCounts();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW register gagal:", e));
+      });
+    }
   })();
 })();
 
