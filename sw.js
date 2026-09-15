@@ -3,7 +3,7 @@
 // the latest version when online, with a cache fallback for offline use.
 // Static assets (icons, manifest) are cache-first for speed.
 
-const CACHE_NAME = "faktur-fitri-v8";
+const CACHE_NAME = "faktur-fitri-v9";
 const APP_SHELL = [
   "./index.html",
   "./manifest.json",
