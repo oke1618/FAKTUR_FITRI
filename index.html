@@ -1123,13 +1123,34 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   }
 
   async function pushToCloud() {
-    if (!cloudReady || !supa || !useIDB || !db) return;
+    if (!cloudReady || !supa) return;
     try {
       setCloudStatus("syncing");
-      const txAll = await db.tx.toArray();
-      const products = (await db.meta.get("products") || {}).value || [];
-      const sales = (await db.meta.get("sales") || {}).value || [];
-      const months = (await db.meta.get("months") || {}).value || [];
+      let txAll = [];
+      let products = [];
+      let sales = [];
+      let months = [];
+      if (useIDB && db) {
+        txAll = await db.tx.toArray();
+        products = (await db.meta.get("products") || {}).value || [];
+        sales = (await db.meta.get("sales") || {}).value || [];
+        months = (await db.meta.get("months") || {}).value || [];
+      } else if (rows && rows.length) {
+        // Fallback: sinkron dari memori jika IndexedDB gagal
+        txAll = rows.slice();
+        const pSet = new Set(), sSet = new Set(), mSet = new Set();
+        for (const r of txAll) {
+          if (r.Produk || r.produk) pSet.add(String(r.Produk || r.produk));
+          if (r.Sales || r.sales) sSet.add(String(r.Sales || r.sales));
+          if (r.bulan) mSet.add(String(r.bulan));
+        }
+        products = [...pSet];
+        sales = [...sSet];
+        months = [...mSet];
+      } else {
+        setCloudStatus("online", "Tidak ada data lokal untuk di-upload");
+        return;
+      }
       const nowIso = new Date().toISOString();
       const { error } = await supa.from(CLOUD_TABLE).upsert({
         id: CLOUD_ROW_ID,
@@ -1139,9 +1160,11 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       if (error) throw error;
       _lastAppliedRemoteTs = new Date(nowIso).getTime();
       setCloudStatus("online");
+      console.info("Push ke cloud OK:", txAll.length, "baris");
     } catch (e) {
       console.warn("Push ke cloud gagal:", e);
       setCloudStatus("error");
+      try { showToast("Gagal sync cloud: " + (e.message || e), "error"); } catch (_) {}
     }
   }
 
@@ -1154,15 +1177,20 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       if (!data || !data.payload) return false;
       const remoteTs = new Date(data.updated_at).getTime();
       if (!force && remoteTs <= _lastAppliedRemoteTs) return false;
-      if (!useIDB || !db) return false;
       const p = data.payload;
       _isApplyingRemote = true;
       try {
-        await db.tx.clear();
-        if (p.tx && p.tx.length) await db.tx.bulkPut(p.tx);
-        await db.meta.put({ key: "products", value: p.products || [] });
-        await db.meta.put({ key: "sales", value: p.sales || [] });
-        await db.meta.put({ key: "months", value: p.months || [] });
+        if (useIDB && db) {
+          await db.tx.clear();
+          if (p.tx && p.tx.length) await db.tx.bulkPut(p.tx);
+          await db.meta.put({ key: "products", value: p.products || [] });
+          await db.meta.put({ key: "sales", value: p.sales || [] });
+          await db.meta.put({ key: "months", value: p.months || [] });
+        } else if (p.tx && p.tx.length) {
+          rows = p.tx.slice();
+        } else {
+          return false;
+        }
       } finally {
         _isApplyingRemote = false;
       }
@@ -1196,15 +1224,31 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
 
   async function initDB() {
     if (!IDB_SUPPORTED) return;
-    try {
-      db = new Dexie("rekapPenjualan_v1");
-      db.version(1).stores({ tx: "++id,bulan,sales,pembayaran,_ts,produk", meta: "&key" });
+    const DB_NAME = "rekapPenjualan_v1";
+    const SCHEMA = { tx: "++id,bulan,sales,pembayaran,_ts,produk", meta: "&key" };
+    // Versi harus >= versi IndexedDB yang sudah ada di browser (ada yang sudah di v20).
+    // Kalau diminta lebih rendah, Dexie throw VersionError → data hanya di memori & hilang saat refresh.
+    const DB_VERSION = 21;
+    async function openFresh() {
+      db = new Dexie(DB_NAME);
+      db.version(DB_VERSION).stores(SCHEMA);
       await db.open();
       useIDB = true;
+    }
+    try {
+      await openFresh();
     } catch (e) {
-      console.warn("IndexedDB unavailable; in-memory mode", e);
-      db = null;
-      useIDB = false;
+      console.warn("IndexedDB open gagal, coba reset database:", e && e.message ? e.message : e);
+      try {
+        if (db) try { db.close(); } catch (_) {}
+        await Dexie.delete(DB_NAME);
+        await openFresh();
+        console.info("IndexedDB di-reset ke versi", DB_VERSION);
+      } catch (e2) {
+        console.warn("IndexedDB unavailable; in-memory mode", e2);
+        db = null;
+        useIDB = false;
+      }
     }
   }
   var _parseFileName = "";
