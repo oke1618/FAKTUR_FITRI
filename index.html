@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Faktur Penjualan</title>
+<title>Faktur Penjualan Fitri</title>
 <meta name="description" content="Aplikasi rekap dan filter faktur penjualan dengan dukungan Excel dan IndexedDB." />
-<meta property="og:title" content="Faktur Penjualan" />
+<meta property="og:title" content="Faktur Penjualan Fitri" />
 <meta property="og:description" content="Aplikasi rekap dan filter faktur penjualan dengan dukungan Excel dan IndexedDB." />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -19,7 +19,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Faktur FITRI" />
+<meta name="apple-mobile-web-app-title" content="Faktur Penjualan Fitri" />
 <meta name="mobile-web-app-capable" content="yes" />
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -157,7 +157,12 @@ body{font-family:Arial,sans-serif;margin:0;background:var(--bg);color:var(--text
 header{background:var(--header-bg);color:var(--header-text);padding:6px 14px;position:relative;z-index:50}
 .wrap{max-width:1600px;margin:auto}
 .header-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.header-left h2{margin:0;font-size:13px;font-weight:600;line-height:1.2;letter-spacing:.02em}
+.header-left{display:flex;align-items:center;gap:8px;min-width:0}
+.header-left h2{display:none;margin:0;font-size:13px;font-weight:600;line-height:1.2;letter-spacing:.02em}
+/* Mode aplikasi (standalone / PWA): pastikan judul ganda tidak muncul */
+@media all and (display-mode: standalone), all and (display-mode: window-controls-overlay) {
+  .header-left h2{display:none}
+}
 .header-actions{display:flex;align-items:center;gap:8px}
 .theme-btn{background:transparent;border:1px solid rgba(255,255,255,.35);color:inherit;padding:4px 10px;font-size:12px;border-radius:6px;cursor:pointer;font-weight:600;position:relative;z-index:51;user-select:none}
 .theme-btn:hover{background:rgba(255,255,255,.12)}
@@ -568,7 +573,9 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
 <header>
   <div class="wrap header-row">
     <div class="header-left">
-      <h2>FAKTUR PENJUALAN</h2>
+      <span class="cloud-status" id="cloudStatus" data-state="offline" title="Status sinkronisasi cloud">
+        <span class="cloud-dot"></span><span class="cloud-label">Online</span>
+      </span>
     </div>
     <div class="header-actions">
       <nav class="header-tabs" role="tablist" aria-label="Tab utama">
@@ -576,9 +583,6 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
         <button onclick="show('s1',this)">Faktur Fitri</button>
         <button onclick="show('s2',this)">Penjualan Fitri</button>
       </nav>
-      <span class="cloud-status" id="cloudStatus" data-state="offline" title="Status sinkronisasi cloud">
-        <span class="cloud-dot"></span><span class="cloud-label">Cloud</span>
-      </span>
       <button type="button" class="theme-btn" id="themeBtn" onclick="toggleTheme(event)" title="Mode gelap / terang">☀️</button>
       <div class="dd" id="menuDd">
         <button type="button" class="dd-toggle" id="menuToggleBtn" onclick="toggleDd(event)"><span>☰ MENU</span><span class="chev">▼</span></button>

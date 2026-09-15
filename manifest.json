@@ -1,6 +1,6 @@
 {
-  "name": "Faktur Penjualan FITRI",
-  "short_name": "Faktur FITRI",
+  "name": "Faktur Penjualan Fitri",
+  "short_name": "Faktur Fitri",
   "description": "Aplikasi rekap dan filter faktur penjualan FITRI dengan sinkronisasi online.",
   "id": "/FAKTUR_FITRI/",
   "start_url": "./index.html",
