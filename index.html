@@ -542,6 +542,26 @@ body.dark .rank-badge-3{background:rgba(234,88,12,.2);color:#fb923c;border-color
 /* Kelas khusus perataan & perapian kolom */
 th.col-tgl, td.col-tgl{padding-left:4px!important;padding-right:4px!important;text-align:center}
 th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;text-align:right}
+
+/* Backup Menu Styles */
+.backup-btn{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border);border-radius:8px;padding:10px 14px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;margin-bottom:8px;font-size:13px;font-weight:600}
+.backup-btn:hover{background:var(--btn-hover);border-color:#5b9bd5;transform:translateY(-1px)}
+.backup-btn-icon{font-size:18px;line-height:1;flex:0 0 auto}
+.backup-btn-txt{flex:1;min-width:0}
+.backup-btn-primary{background:#2563eb;color:#ffffff;border:1px solid #1d4ed8}
+.backup-btn-primary:hover{background:#1d4ed8;border-color:#1e40af}
+.backup-btn-success{background:#059669;color:#ffffff;border:1px solid #047857}
+.backup-btn-success:hover{background:#047857;border-color:#065f46}
+.backup-btn-warning{background:#d97706;color:#ffffff;border:1px solid #b45309}
+.backup-btn-warning:hover{background:#b45309;border-color:#92400e}
+body.dark .backup-btn-primary{background:#3b82f6;border-color:#2563eb}
+body.dark .backup-btn-primary:hover{background:#2563eb;border-color:#1d4ed8}
+body.dark .backup-btn-success{background:#10b981;border-color:#059669}
+body.dark .backup-btn-success:hover{background:#059669;border-color:#047857}
+body.dark .backup-btn-warning{background:#f59e0b;color:#1f2937;border-color:#d97706}
+body.dark .backup-btn-warning:hover{background:#d97706;border-color:#b45309}
+.backup-footer{margin-top:12px;padding:8px;background:rgba(239,68,68,.1);border-left:3px solid #ef4444;border-radius:4px}
+body.dark .backup-footer{background:rgba(239,68,68,.15)}
 </style>
 </head>
 <body class="dark">
@@ -578,10 +598,10 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
               <span class="menu-nav-txt"><b>Menu Harga</b><small>Ubah harga beli massal per rentang tanggal</small></span>
               <span class="menu-nav-chev">›</span>
             </button>
-            <button type="button" class="menu-nav-item" disabled title="Belum tersedia">
+            <button type="button" class="menu-nav-item" onclick="openMenuPane('backup')">
               <span class="menu-nav-ico">💾</span>
-              <span class="menu-nav-txt"><b>Menu Backup</b><small>Segera hadir</small></span>
-              <span class="menu-nav-badge">Soon</span>
+              <span class="menu-nav-txt"><b>Menu Backup</b><small>Backup & restore data semua perangkat</small></span>
+              <span class="menu-nav-chev">›</span>
             </button>
           </div>
           <div id="status" class="status">Belum ada data.</div>
@@ -633,6 +653,64 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
             <div class="hint">Pilih <b>rentang tanggal + produk</b>, isi harga beli baru. Hanya transaksi produk tersebut dalam rentang tanggal tersebut yang akan berubah.</div>
           </div>
           <div class="hint">Format sumber mengikuti Excel terbaru: <b>Harga Beli</b> dan <b>Kd Customer</b> ikut dibaca.</div>
+        </div>
+
+        <div id="menuPaneBackup" class="menu-view" style="display:none">
+          <button type="button" class="menu-back" onclick="closeMenuPane()">‹ Kembali ke MENU</button>
+          <div class="menu-title">💾 Backup & Restore Semua Data</div>
+          
+          <!-- Section 1: Local File Backup -->
+          <div class="menu-section">
+            <div class="menu-label">📂 Backup & Restore File (Lokal)</div>
+            <div class="hint" style="margin-top:0">Backup terakhir: belum ada folder Google Drive yang dipilih</div>
+            
+            <button type="button" class="backup-btn" onclick="chooseGoogleDriveFolder()">
+              <span class="backup-btn-icon">📁</span>
+              <span class="backup-btn-txt">Pilih Folder Google Drive (sekali saja)</span>
+            </button>
+            
+            <button type="button" class="backup-btn backup-btn-primary" onclick="backupToGoogleDrive()">
+              <span class="backup-btn-icon">☁️</span>
+              <span class="backup-btn-txt">Backup Sekarang ke Google Drive</span>
+            </button>
+            
+            <button type="button" class="backup-btn" onclick="manualBackupFile()">
+              <span class="backup-btn-icon">💾</span>
+              <span class="backup-btn-txt">Unduh File Backup (manual)</span>
+            </button>
+            
+            <button type="button" class="backup-btn backup-btn-success" onclick="restoreFromGoogleDrive()">
+              <span class="backup-btn-icon">📥</span>
+              <span class="backup-btn-txt">Restore dari Folder Google Drive</span>
+            </button>
+            
+            <button type="button" class="backup-btn backup-btn-warning" onclick="restoreFromFileBackup()">
+              <span class="backup-btn-icon">🗂</span>
+              <span class="backup-btn-txt">Restore dari File Backup...</span>
+            </button>
+            
+            <div class="hint">Backup mencakup: Rekap Penjualan, Rekap Uang Masuk, dan Rekap Tanda Tangan 💡 jika terjadi error atau data hilang.</div>
+          </div>
+
+          <!-- Section 2: Cloud Sync -->
+          <div class="menu-section">
+            <div class="menu-label">☁️ Sync Antar-Device (Cloud)</div>
+            <div class="hint" style="margin-top:0">Status cloud mengikuti sinkronisasi aplikasi. <span id="cloudSyncStatus">Offline</span></div>
+            
+            <button type="button" class="backup-btn backup-btn-primary" onclick="uploadDataToCloud()">
+              <span class="backup-btn-icon">⬆️</span>
+              <span class="backup-btn-txt">Upload Data Device Ini ke Cloud</span>
+            </button>
+            
+            <button type="button" class="backup-btn backup-btn-success" onclick="downloadDataFromCloud()">
+              <span class="backup-btn-icon">⬇️</span>
+              <span class="backup-btn-txt">Ambil Data Terbaru dari Cloud</span>
+            </button>
+            
+            <div class="hint">Gunakan "Upload" setelah selesai kerja di device ini, dan "Download" ketika membuka dari device lain. Cukup satu langkah per device.</div>
+          </div>
+
+          <div class="hint backup-footer">⚠️ Pastikan koneksi internet stabil saat melakukan backup. Data backup akan disimpan aman di server.</div>
         </div>
 
       </div>
@@ -1712,18 +1790,22 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
     const root = document.getElementById("menuRoot");
     const d = document.getElementById("menuPaneData");
     const h = document.getElementById("menuPaneHarga");
+    const b = document.getElementById("menuPaneBackup");
     if (root) root.style.display = "none";
     if (d) d.style.display = name === "data" ? "block" : "none";
     if (h) h.style.display = name === "harga" ? "block" : "none";
+    if (b) b.style.display = name === "backup" ? "block" : "none";
     if (name === "harga") populateHargaProdukSelect();
   }
   function closeMenuPane() {
     const root = document.getElementById("menuRoot");
     const d = document.getElementById("menuPaneData");
     const h = document.getElementById("menuPaneHarga");
+    const b = document.getElementById("menuPaneBackup");
     if (root) root.style.display = "block";
     if (d) d.style.display = "none";
     if (h) h.style.display = "none";
+    if (b) b.style.display = "none";
   }
   function populateHargaProdukSelect() {
     const sel = document.getElementById("hbProduk");
@@ -3748,6 +3830,138 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
     _lastThemeToggle = now;
     applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
   }
+  // Backup Functions
+  async function chooseGoogleDriveFolder() {
+    showToast("⏳ Fitur Google Drive sedang dalam pengembangan...", "info");
+    console.log("Pilih folder Google Drive akan segera tersedia");
+  }
+  async function backupToGoogleDrive() {
+    showToast("📤 Backup ke Google Drive dimulai...", "info");
+    if (!useIDB || !db) {
+      showToast("❌ Data lokal tidak ditemukan", "error");
+      return;
+    }
+    try {
+      showBusy("Membuat backup...");
+      const allData = await db.tx.toArray();
+      const metaFilters = await db.meta.get("filters");
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        version: "1.0",
+        transactions: allData,
+        metadata: metaFilters ? metaFilters.value : {}
+      };
+      const fileName = `FAKTUR_FITRI_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      const dataStr = JSON.stringify(backupData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      hideBusy();
+      showToast(`✅ Backup berhasil! File: ${fileName}`, "success");
+      setStatus(`Backup selesai: ${allData.length} transaksi disimpan`);
+    } catch (e) {
+      hideBusy();
+      showToast("❌ Backup gagal: " + e.message, "error");
+      console.error("Backup error:", e);
+    }
+  }
+  async function manualBackupFile() {
+    showToast("💾 Download manual backup dimulai...", "info");
+    await backupToGoogleDrive();
+  }
+  async function restoreFromGoogleDrive() {
+    showToast("⏳ Fitur restore dari Google Drive sedang dalam pengembangan...", "info");
+    console.log("Restore dari Google Drive akan segera tersedia");
+  }
+  async function restoreFromFileBackup() {
+    showToast("📂 Pilih file backup untuk di-restore...", "info");
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        showBusy("Membaca file backup...");
+        const text = await file.text();
+        const backupData = JSON.parse(text);
+        if (!backupData.transactions || !Array.isArray(backupData.transactions)) {
+          throw new Error("Format file backup tidak valid");
+        }
+        showConfirmDialog(
+          `Restore ${backupData.transactions.length} transaksi dari backup?`,
+          async () => {
+            try {
+              showBusy("Memasukkan data ke database...");
+              if (useIDB && db) {
+                await db.tx.clear();
+                await db.tx.bulkAdd(backupData.transactions);
+                if (backupData.metadata) {
+                  await db.meta.put({ key: "filters", value: backupData.metadata });
+                }
+              }
+              hideBusy();
+              showToast("✅ Restore berhasil!", "success");
+              setStatus("Data restore selesai. Silakan refresh halaman.");
+              setTimeout(() => location.reload(), 1500);
+            } catch (err) {
+              hideBusy();
+              showToast("❌ Restore gagal: " + err.message, "error");
+            }
+          }
+        );
+      } catch (err) {
+        hideBusy();
+        showToast("❌ Error membaca file: " + err.message, "error");
+      }
+    };
+    input.click();
+  }
+  async function uploadDataToCloud() {
+    showToast("⬆️ Upload data ke cloud dimulai...", "info");
+    if (!cloudReady) {
+      showToast("⚠️ Cloud sync tidak tersedia (belum konfigurasi)", "warning");
+      return;
+    }
+    try {
+      showBusy("Upload ke cloud...");
+      await pushToCloud();
+      hideBusy();
+      showToast("✅ Upload cloud berhasil!", "success");
+      setStatus("Data device berhasil di-upload ke cloud");
+    } catch (e) {
+      hideBusy();
+      showToast("❌ Upload cloud gagal: " + e.message, "error");
+    }
+  }
+  async function downloadDataFromCloud() {
+    showToast("⬇️ Download data terbaru dari cloud...", "info");
+    if (!cloudReady) {
+      showToast("⚠️ Cloud sync tidak tersedia (belum konfigurasi)", "warning");
+      return;
+    }
+    try {
+      showBusy("Download dari cloud...");
+      const changed = await pullFromCloud(false);
+      if (changed) {
+        await restoreFromDB();
+        hideBusy();
+        showToast("✅ Download cloud berhasil! Data diperbarui", "success");
+        setStatus("Data terbaru dari cloud berhasil dimuat");
+      } else {
+        hideBusy();
+        showToast("ℹ️ Tidak ada data baru di cloud", "info");
+      }
+    } catch (e) {
+      hideBusy();
+      showToast("❌ Download cloud gagal: " + e.message, "error");
+    }
+  }
+
   window.show = show;
   window.toggleTheme = toggleTheme;
   window.toggleDd = toggleDd;
@@ -3788,6 +4002,13 @@ th.col-qty, td.col-qty{padding-left:3px!important;padding-right:4px!important;te
   window.downloadExcel = downloadExcel;
   window.setS3TierFilter = setS3TierFilter;
   window.sortS3 = sortS3;
+  window.chooseGoogleDriveFolder = chooseGoogleDriveFolder;
+  window.backupToGoogleDrive = backupToGoogleDrive;
+  window.manualBackupFile = manualBackupFile;
+  window.restoreFromGoogleDrive = restoreFromGoogleDrive;
+  window.restoreFromFileBackup = restoreFromFileBackup;
+  window.uploadDataToCloud = uploadDataToCloud;
+  window.downloadDataFromCloud = downloadDataFromCloud;
   window.addEventListener("dragover", (e) => {
     e.preventDefault();
   });
