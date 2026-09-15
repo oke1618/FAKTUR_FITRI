@@ -789,15 +789,15 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
         <div class="filter-menu" id="filterMenu" onclick="event.stopPropagation()">
           <div class="filter-group">
             <label>Bulan</label>
-            <select id="filterMonth"><option value="">Semua bulan</option></select>
+            <select id="filterMonth" onchange="applyFilters()"><option value="">Semua bulan</option></select>
           </div>
           <div class="filter-group">
             <label>Sales</label>
-            <select id="filterSales"><option value="">Semua sales</option></select>
+            <select id="filterSales" onchange="applyFilters()"><option value="">Semua sales</option></select>
           </div>
           <div class="filter-group">
             <label>Produk</label>
-            <select id="filterProduct">
+            <select id="filterProduct" onchange="applyFilters()">
               <option value="">Semua produk</option>
               <option value="FITRI">Fitri</option>
               <option value="RUPA_RUPA">Rupa Rupa (selain Fitri)</option>
@@ -805,17 +805,16 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
           </div>
           <div class="filter-group">
             <label>Pembayaran</label>
-            <select id="filterPayment">
+            <select id="filterPayment" onchange="applyFilters()">
               <option value="">Semua pembayaran</option>
               <option value="CASH">Cash</option>
               <option value="TEMPO">Tempo</option>
             </select>
           </div>
           <div class="filter-actions">
-            <button type="button" onclick="applyFilters()">Terapkan Filter</button>
-            <button type="button" class="filter-reset" onclick="resetFilters()">Reset</button>
+            <button type="button" class="filter-reset" onclick="resetFilters()" style="flex:1">Reset filter</button>
           </div>
-          <div class="filter-info" id="filterInfo">Filter belum diterapkan.</div>
+          <div class="filter-info" id="filterInfo">Pilih filter — langsung diterapkan.</div>
         </div>
       </div>
       <div class="col-picker" id="colPicker">
@@ -1025,6 +1024,8 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   var fakturRows = [];
   var R = {};
   var filters = { month: "", sales: "", product: "", payment: "" };
+  var allMonthsCache = [];
+  var allSalesCache = [];
   var searchQuery = "";
   var _searchTimer = null;
   var dataVersion = 0;
@@ -1703,12 +1704,17 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       }
       sortData.sort((a, b) => (b._ts || 0) - (a._ts || 0));
       if (gen !== _parseGen) return;
+      await refreshAllMonthsCache();
+      // Setelah upload: default ke bulan terkini
+      filters = { month: latestMonth(allMonthsCache) || "", sales: "", product: "", payment: "" };
+      try { if (useIDB && db) await db.meta.put({ key: "filters", value: filters }); } catch (e) {}
+      sortData = await fetchFiltered();
+      sortData.sort((a, b) => (b._ts || 0) - (a._ts || 0));
       filteredRows = sortData;
       materialisedRows = [];
       materialise();
-      filters = { month: "", sales: "", product: "", payment: "" };
       if (gen !== _parseGen) return;
-      populateFiltersDOM();
+      await populateFiltersDOM();
       buildColPicker();
       if (gen !== _parseGen) return;
       build(materialisedRows);
@@ -1863,6 +1869,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     }
     updateFilterUi();
     await refreshAfterDataChange();
+    // Dropdown tetap terbuka supaya ganti bulan praktis
   }
   function resetFilters() {
     filters = { month: "", sales: "", product: "", payment: "" };
@@ -2144,27 +2151,95 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     s0Widths = computeColWidths();
     buildPanelS0();
   }
+  function sortMonthsDesc(months) {
+    return [...new Set((months || []).map(String).filter(Boolean))].sort().reverse();
+  }
+  function latestMonth(months) {
+    const list = sortMonthsDesc(months);
+    return list.length ? list[0] : "";
+  }
   function populateFiltersFromMeta(m) {
     if (!m) return;
-    const months = m.months || [], sales = m.sales || [];
-    document.getElementById("filterMonth").innerHTML = '<option value="">Semua bulan</option>' + months.map((x) => '<option value="' + escHtml(x) + '">' + escHtml(monthLabel(x)) + "</option>").join("");
-    document.getElementById("filterSales").innerHTML = '<option value="">Semua sales</option>' + sales.map((x) => '<option value="' + escHtml(x) + '">' + escHtml(x) + "</option>").join("");
+    if (m.months && m.months.length) allMonthsCache = sortMonthsDesc(m.months);
+    if (m.sales && m.sales.length) allSalesCache = [...new Set(m.sales.map(String).filter(Boolean))].sort();
+    const months = allMonthsCache.length ? allMonthsCache : sortMonthsDesc(m.months || []);
+    const sales = allSalesCache.length ? allSalesCache : [...new Set((m.sales || []).map(String).filter(Boolean))].sort();
+    const fm = document.getElementById("filterMonth");
+    const fs = document.getElementById("filterSales");
+    if (fm) {
+      const cur = fm.value;
+      fm.innerHTML = '<option value="">Semua bulan</option>' + months.map((x) => '<option value="' + escHtml(x) + '">' + escHtml(monthLabel(x)) + "</option>").join("");
+      if (cur && months.includes(cur)) fm.value = cur;
+      else if (filters.month && months.includes(filters.month)) fm.value = filters.month;
+    }
+    if (fs) {
+      const cur = fs.value;
+      fs.innerHTML = '<option value="">Semua sales</option>' + sales.map((x) => '<option value="' + escHtml(x) + '">' + escHtml(x) + "</option>").join("");
+      if (cur) fs.value = cur;
+    }
     const dm = document.getElementById("deleteMonth");
     if (dm) dm.innerHTML = '<option value="">Pilih bulan...</option>' + months.map((x) => '<option value="' + escHtml(x) + '">' + escHtml(monthLabel(x)) + "</option>").join("");
   }
+  async function refreshAllMonthsCache() {
+    try {
+      if (useIDB && db) {
+        const all = await db.tx.toArray();
+        allMonthsCache = sortMonthsDesc(all.map((r) => r.bulan || monthKey(r.tanggal || r.Tanggal)));
+        allSalesCache = [...new Set(all.map((r) => U(r.sales || r.Sales)).filter(Boolean))].sort();
+        const metaM = (await db.meta.get("months") || {}).value || [];
+        if (metaM.length) allMonthsCache = sortMonthsDesc([...allMonthsCache, ...metaM]);
+      } else if (rows && rows.length) {
+        allMonthsCache = sortMonthsDesc(rows.map((r) => r.bulan || monthKey(r.tanggal || r.Tanggal)));
+        allSalesCache = [...new Set(rows.map((r) => U(r.sales || r.Sales)).filter(Boolean))].sort();
+      }
+    } catch (e) {
+      console.warn("refreshAllMonthsCache", e);
+    }
+  }
   async function populateFiltersDOM() {
-    const months = [...new Set(materialisedRows.map((x) => x.bulan || monthKey(x.Tanggal)).filter(Boolean))].sort().reverse();
-    const sales = [...new Set(materialisedRows.map((x) => U(x.Sales)).filter(Boolean))].sort();
-    document.getElementById("filterMonth").innerHTML = '<option value="">Semua bulan</option>' + months.map((m) => '<option value="' + escHtml(m) + '">' + escHtml(monthLabel(m)) + "</option>").join("");
-    document.getElementById("filterSales").innerHTML = '<option value="">Semua sales</option>' + sales.map((s) => '<option value="' + escHtml(s) + '">' + escHtml(s) + "</option>").join("");
-    document.getElementById("filterMonth").value = filters.month || "";
-    document.getElementById("filterSales").value = filters.sales || "";
-    document.getElementById("filterProduct").value = filters.product || "";
-    document.getElementById("filterPayment").value = filters.payment || "";
+    // Selalu isi dropdown dari SELURUH data (bukan hasil filter),
+    // supaya ganti bulan tidak perlu lewat "Semua" dulu.
+    if (!allMonthsCache.length || !allSalesCache.length) {
+      await refreshAllMonthsCache();
+    }
+    // Jika cache masih kosong, fallback ke materialised (jarang)
+    const months = allMonthsCache.length
+      ? allMonthsCache
+      : sortMonthsDesc(materialisedRows.map((x) => x.bulan || monthKey(x.Tanggal)));
+    const sales = allSalesCache.length
+      ? allSalesCache
+      : [...new Set(materialisedRows.map((x) => U(x.Sales)).filter(Boolean))].sort();
+    const fm = document.getElementById("filterMonth");
+    const fs = document.getElementById("filterSales");
+    if (fm) {
+      fm.innerHTML = '<option value="">Semua bulan</option>' + months.map((m) => '<option value="' + escHtml(m) + '">' + escHtml(monthLabel(m)) + "</option>").join("");
+      // Pastikan value tersimpan tetap terpilih
+      if (filters.month && months.includes(filters.month)) fm.value = filters.month;
+      else fm.value = filters.month || "";
+    }
+    if (fs) {
+      fs.innerHTML = '<option value="">Semua sales</option>' + sales.map((s) => '<option value="' + escHtml(s) + '">' + escHtml(s) + "</option>").join("");
+      fs.value = filters.sales || "";
+    }
+    const fp = document.getElementById("filterProduct");
+    const fpay = document.getElementById("filterPayment");
+    if (fp) fp.value = filters.product || "";
+    if (fpay) fpay.value = filters.payment || "";
     const dm = document.getElementById("deleteMonth");
     if (dm) dm.innerHTML = '<option value="">Pilih bulan...</option>' + months.map((m) => '<option value="' + escHtml(m) + '">' + escHtml(monthLabel(m)) + "</option>").join("");
     populateHargaProdukSelect();
     updateFilterUi();
+  }
+  /** Set filter default ke bulan terbaru (jika ada data). */
+  function ensureDefaultLatestMonth() {
+    if (filters.month) {
+      // Jika bulan tersimpan masih ada di data, pakai itu
+      if (!allMonthsCache.length || allMonthsCache.includes(filters.month)) return false;
+    }
+    const latest = latestMonth(allMonthsCache);
+    if (!latest) return false;
+    filters.month = latest;
+    return true;
   }
   function updateFilterUi() {
     const n = Object.values(filters).filter(Boolean).length;
@@ -2175,9 +2250,15 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     if (filters.sales) parts.push(filters.sales);
     if (filters.product) parts.push(filters.product === "FITRI" ? "Fitri" : "Rupa Rupa");
     if (filters.payment) parts.push(filters.payment);
-    document.getElementById("filterInfo").textContent = parts.length ? "Aktif: " + parts.join(" \u2022 ") : "Filter belum diterapkan.";
+    document.getElementById("filterInfo").textContent = parts.length ? "Aktif: " + parts.join(" \u2022 ") : "Semua data (tanpa filter).";
   }
   async function refreshAfterDataChange() {
+    await refreshAllMonthsCache();
+    // Hanya koreksi jika bulan aktif sudah tidak ada di data (mis. setelah hapus bulan)
+    if (filters.month && allMonthsCache.length && !allMonthsCache.includes(filters.month)) {
+      filters.month = latestMonth(allMonthsCache);
+      try { if (useIDB && db) await db.meta.put({ key: "filters", value: filters }); } catch (e) {}
+    }
     filteredRows = await fetchFiltered();
     filteredRows.sort((a, b) => (b._ts || 0) - (a._ts || 0));
     materialise();
@@ -3906,6 +3987,12 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       const sales = (await db.meta.get("sales") || {}).value || [];
       const months = (await db.meta.get("months") || {}).value || [];
       populateFiltersFromMeta({ products, sales, months });
+      await refreshAllMonthsCache();
+      // Default: bulan terkini saat buka link (jika belum ada / tidak valid)
+      if (!filters.month || (allMonthsCache.length && !allMonthsCache.includes(filters.month))) {
+        filters.month = latestMonth(allMonthsCache);
+        try { await db.meta.put({ key: "filters", value: filters }); } catch (e) {}
+      }
       document.getElementById("summary").style.display = "block";
       document.getElementById("result").style.display = "block";
       document.getElementById("save").disabled = false;
