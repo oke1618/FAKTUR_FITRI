@@ -770,6 +770,21 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
             <div class="hint">Gunakan "Upload" setelah selesai kerja di device ini, dan "Download" ketika membuka dari device lain. Cukup satu langkah per device.</div>
           </div>
 
+          <!-- Section 2b: Kode Sinkron -->
+          <div class="menu-section">
+            <div class="menu-label">🔑 Kode Sinkron Cloud</div>
+            <div class="hint" style="margin-top:0">Device dengan <b>kode sinkron yang sama</b> berbagi data cloud yang sama. Pastikan hanya device milik <b>usaha/toko yang sama</b> memakai kode yang sama, supaya data usaha lain tidak tertukar/tertimpa.</div>
+            <input type="text" id="cloudSyncIdInput" readonly>
+            <div class="btn-row">
+              <button type="button" class="backup-btn" onclick="copySyncId()">📋 Salin Kode</button>
+              <button type="button" class="backup-btn backup-btn-warning" onclick="generateNewSyncId()">🆕 Buat Kode Baru</button>
+            </div>
+            <div class="menu-field-label">Punya kode dari device lain? Masukkan di sini untuk gabung sinkron:</div>
+            <input type="text" id="cloudSyncIdJoinInput" placeholder="Masukkan kode sinkron...">
+            <button type="button" class="backup-btn backup-btn-success" onclick="applyCustomSyncId()">🔗 Gunakan Kode Ini</button>
+            <div class="hint">"Buat Kode Baru" memisahkan device ini dari device lain yang masih pakai kode lama. Bagikan kode ke device lain (di usaha yang sama) lalu minta mereka pakai "Gunakan Kode Ini".</div>
+          </div>
+
           <div class="hint backup-footer">⚠️ Pastikan koneksi internet stabil saat melakukan backup. Data backup akan disimpan aman di server.</div>
         </div>
 
@@ -1036,14 +1051,37 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     if (!v) return null;
     if (v instanceof Date) return v;
     if (typeof v === "number" && v > 4e4 && v < 6e4) return new Date(Date.UTC(1899, 11, 30) + v * 864e5);
-    const s = String(v).trim(), d = new Date(s);
-    if (!isNaN(d.getTime())) return d;
-    const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+    const s = String(v).trim();
+    // Serial tanggal Excel yang datang sebagai teks angka murni (mis. "45566") diperlakukan sama
+    // seperti serial numerik di atas.
+    if (/^\d{5}$/.test(s)) {
+      const serial = parseInt(s, 10);
+      if (serial > 4e4 && serial < 6e4) {
+        const dtSerial = new Date(Date.UTC(1899, 11, 30) + serial * 864e5);
+        if (!isNaN(dtSerial.getTime())) return dtSerial;
+      }
+    }
+    // Format ISO dengan tahun 4 digit di depan (mis. "2025-09-16") tidak ambigu (urutan
+    // tahun-bulan-tanggal), jadi aman diserahkan ke parser bawaan JS.
+    if (/^\d{4}-\d{1,2}-\d{1,2}/.test(s)) {
+      const dIso = new Date(s);
+      if (!isNaN(dIso.getTime())) return dIso;
+    }
+    // Format angka pendek berpemisah "/" atau "-" (mis. "5/9/2025", "05-09-25") SELALU dibaca
+    // sebagai DD/MM/YYYY (format Indonesia), BUKAN MM/DD/YYYY (format Amerika) seperti yang
+    // dipakai Date() bawaan JS untuk string ber-"/". Ini mencegah tanggal "5/9" salah terbaca
+    // "Mei 9" padahal maksudnya "5 September" — sumber bug filter bulan yang salah.
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
     if (m) {
       let y = +m[3];
       if (y < 100) y += 2e3;
-      return new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+      const dd = new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+      if (!isNaN(dd.getTime())) return dd;
     }
+    // Format lain (mis. nama bulan "16 September 2025", atau ISO dengan jam/timezone) diserahkan
+    // ke parser bawaan JS sebagai upaya terakhir.
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
     return null;
   }
   function fmtTgl(v) {
@@ -1139,13 +1177,81 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   var SUPABASE_URL = "https://fdjgsybhsdavbjgnxeve.supabase.co";
   var SUPABASE_KEY = "sb_publishable_DagU-Vwmj-3cVBpx_XBHtg_6mpa1cjH";
   var CLOUD_TABLE = "fp_faktur_data";
-  var CLOUD_ROW_ID = "main";
+  // CATATAN PENTING: sebelumnya CLOUD_ROW_ID selalu "main" untuk SEMUA pemasangan aplikasi ini
+  // (karena SUPABASE_URL/KEY di atas juga sama-sama hardcoded), sehingga kalau file ini dipakai
+  // oleh lebih dari satu usaha/toko tanpa mengganti kode sinkron, data mereka akan saling
+  // menimpa di baris cloud yang sama. Sekarang kode sinkron disimpan per-device di localStorage,
+  // dengan "main" sebagai nilai default (supaya device yang sudah lama sinkron tidak kehilangan
+  // datanya), dan pengguna bisa membuat/mengganti kode lewat Menu Backup > Kode Sinkron Cloud.
+  var CLOUD_ROW_ID = (function () {
+    try {
+      var saved = localStorage.getItem("fp_cloud_sync_id");
+      return saved && saved.trim() ? saved.trim() : "main";
+    } catch (e) {
+      return "main";
+    }
+  })();
   var supa = null;
   var cloudReady = false;
   var _pushTimer = null;
   var _lastAppliedRemoteTs = 0;
   var _cloudChannel = null;
   var _isApplyingRemote = false;
+
+  function genSyncId() {
+    try {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID().slice(0, 8).toUpperCase();
+    } catch (e) {
+    }
+    return Math.random().toString(36).slice(2, 10).toUpperCase();
+  }
+  function renderSyncIdUi() {
+    var el = document.getElementById("cloudSyncIdInput");
+    if (el) el.value = CLOUD_ROW_ID;
+  }
+  function copySyncId() {
+    var val = CLOUD_ROW_ID;
+    try {
+      navigator.clipboard.writeText(val);
+      showToast("Kode sinkron disalin: " + val, "success");
+    } catch (e) {
+      showToast("Kode sinkron: " + val + " (salin manual, clipboard tidak tersedia)", "warning");
+    }
+  }
+  function switchCloudSyncId(newId) {
+    try { localStorage.setItem("fp_cloud_sync_id", newId); } catch (e) {
+    }
+    CLOUD_ROW_ID = newId;
+    _lastAppliedRemoteTs = 0;
+    renderSyncIdUi();
+  }
+  function generateNewSyncId() {
+    const oldId = CLOUD_ROW_ID;
+    showConfirmDialog(
+      "Buat Kode Sinkron Baru",
+      'Kode baru akan memisahkan data cloud device ini dari device lain yang masih memakai kode lama ("' + oldId + '"). Device lain harus memasukkan kode baru ini juga (menu "Gunakan Kode Ini") supaya tetap sinkron dengan device ini. Lanjutkan?',
+      () => {
+        const id = genSyncId();
+        switchCloudSyncId(id);
+        showToast('Kode sinkron baru dibuat: ' + id + '. Bagikan ke device lain (usaha yang sama), lalu tekan "Upload Data Device Ini ke Cloud".', "success");
+      }
+    );
+  }
+  function applyCustomSyncId() {
+    const el = document.getElementById("cloudSyncIdJoinInput");
+    const val = el ? el.value.trim().toUpperCase() : "";
+    if (!val) return showToast("Masukkan kode sinkron yang ingin dipakai.", "warning");
+    const oldId = CLOUD_ROW_ID;
+    showConfirmDialog(
+      "Ganti Kode Sinkron",
+      'Device ini akan pindah memakai kode sinkron "' + val + '" (sebelumnya "' + oldId + '"). Data lokal di device ini TIDAK dihapus, tapi sinkron cloud akan mengikuti kode baru. Setelah ini, tekan "Ambil Data Terbaru dari Cloud" untuk mengambil data usaha yang kodenya sama. Lanjutkan?',
+      () => {
+        switchCloudSyncId(val);
+        if (el) el.value = "";
+        showToast('Kode sinkron diganti ke: ' + val + '. Tekan "Ambil Data Terbaru dari Cloud" untuk sinkron.', "success");
+      }
+    );
+  }
 
   function setCloudStatus(state, title) {
     var el = document.getElementById("cloudStatus");
@@ -1182,11 +1288,16 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   function schedulePushToCloud() {
     if (!cloudReady || _isApplyingRemote) return;
     clearTimeout(_pushTimer);
-    _pushTimer = setTimeout(pushToCloud, 1000);
+    // silent=true: sinkron latar belakang, kegagalan cukup ditandai di status cloud + toast
+    // ringan, tidak perlu dilempar sebagai exception tak tertangani dari setTimeout.
+    _pushTimer = setTimeout(() => { pushToCloud(true).catch(() => {}); }, 1000);
   }
 
-  async function pushToCloud() {
-    if (!cloudReady || !supa) return;
+  async function pushToCloud(silent = true) {
+    if (!cloudReady || !supa) {
+      if (!silent) throw new Error("Cloud sync tidak tersedia (belum konfigurasi)");
+      return;
+    }
     try {
       setCloudStatus("syncing");
       let txAll = [];
@@ -1227,12 +1338,23 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     } catch (e) {
       console.warn("Push ke cloud gagal:", e);
       setCloudStatus("error");
-      try { showToast("Gagal sync cloud: " + (e.message || e), "error"); } catch (_) {}
+      if (silent) {
+        // Dipanggil dari proses latar belakang (bukan aksi eksplisit user): tampilkan toast di
+        // sini karena tidak ada pemanggil lain yang akan menangani error ini.
+        try { showToast("Gagal sync cloud: " + (e.message || e), "error"); } catch (_) {}
+      } else {
+        // Dipanggil dari aksi eksplisit user (mis. tombol "Upload ke Cloud"): lempar error supaya
+        // pemanggil bisa menampilkan pesan gagal yang benar, bukan toast "berhasil" yang palsu.
+        throw e;
+      }
     }
   }
 
-  async function pullFromCloud(force) {
-    if (!cloudReady || !supa) return false;
+  async function pullFromCloud(force, silent = true) {
+    if (!cloudReady || !supa) {
+      if (!silent) throw new Error("Cloud sync tidak tersedia (belum konfigurasi)");
+      return false;
+    }
     try {
       const { data, error } = await supa.from(CLOUD_TABLE).select("payload,updated_at").eq("id", CLOUD_ROW_ID).maybeSingle();
       if (error) throw error;
@@ -1262,6 +1384,9 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     } catch (e) {
       console.warn("Pull dari cloud gagal:", e);
       setCloudStatus("error");
+      // Dipanggil dari aksi eksplisit user (mis. tombol "Download dari Cloud"): lempar error
+      // supaya pemanggil tahu ini kegagalan sungguhan, bukan sekadar "tidak ada data baru".
+      if (!silent) throw e;
       return false;
     }
   }
@@ -1469,35 +1594,13 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       if (!produk && !sales_ && !jumlah && !faktur) continue;
       const tglStr = col(x, "Tanggal", "Date", "Tgl", "TGL", "Waktu");
       let ts = null, bulan = "";
-      if (tglStr instanceof Date) {
-        ts = tglStr.getTime();
-        bulan = tglStr.getFullYear() + "-" + String(tglStr.getMonth() + 1).padStart(2, "0");
-      } else {
-        const s2 = String(tglStr == null ? "" : tglStr).trim();
-        if (/^\d{5}$/.test(s2)) {
-          const serial = parseInt(s2, 10);
-          const dt = new Date((serial - 25569) * 86400 * 1e3);
-          if (!isNaN(dt.getTime())) {
-            ts = dt.getTime();
-            bulan = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0");
-          }
-        }
-        if (!ts && s2) {
-          const dt = new Date(s2);
-          if (!isNaN(dt.getTime())) {
-            ts = dt.getTime();
-            bulan = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0");
-          } else {
-            const m = s2.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
-            if (m) {
-              let y = +m[3];
-              if (y < 100) y += 2e3;
-              const dd = new Date(y, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
-              ts = dd.getTime();
-              bulan = y + "-" + String(+m[2]).padStart(2, "0");
-            }
-          }
-        }
+      // Pakai satu fungsi parsing tanggal yang sama (toDate) dengan yang dipakai untuk filter
+      // bulan di layar transaksi, supaya field "bulan" yang tersimpan selalu konsisten dengan
+      // hasil filter — sebelumnya ada 2 logika parsing terpisah yang bisa berbeda hasil.
+      const dtParsed = toDate(tglStr);
+      if (dtParsed && !isNaN(dtParsed.getTime())) {
+        ts = dtParsed.getTime();
+        bulan = dtParsed.getFullYear() + "-" + String(dtParsed.getMonth() + 1).padStart(2, "0");
       }
       const o = {
         faktur: faktur || "FAK-" + (i + 1),
@@ -1972,6 +2075,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     if (b) b.style.display = name === "backup" ? "block" : "none";
     if (name === "harga") populateHargaProdukSelect("hbProduk");
     if (name === "hargajual") populateHargaProdukSelect("hjProduk");
+    if (name === "backup") renderSyncIdUi();
   }
   function closeMenuPane() {
     const root = document.getElementById("menuRoot");
@@ -3229,14 +3333,15 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
       // banyak transaksi di hari yang sama otomatis digabung jadi satu grup tanggal.
       const dk = d ? (d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate()) : 0;
       const dl=d?fmtTgl(d):String(x.Tanggal||"")||"-";
-      if(!dates.has(dk)) dates.set(dk,{label:dl, products:new Map()});
+      if(!dates.has(dk)) dates.set(dk,{dk, label:dl, products:new Map()});
       const day=dates.get(dk), p=String(x.Produk||"").trim()||"(Tanpa Produk)";
       if(!day.products.has(p)) day.products.set(p,{product:p, qty:0, salesQty:{}});
       const g=day.products.get(p), q=N(x.Jumlah), sl=rqsSalesKey(x.Sales); g.qty+=q; g.salesQty[sl]=(g.salesQty[sl]||0)+q;
     });
-    const days=[...dates.values()].sort((a,b)=>{
-      const ka=[...dates.entries()].find(e=>e[1]===a)?.[0]||0, kb=[...dates.entries()].find(e=>e[1]===b)?.[0]||0; return kb-ka;
-    });
+    // Kunci tanggal (dk) sudah disimpan langsung di tiap objek "day" saat dibuat, jadi bisa
+    // dibandingkan langsung tanpa mencari ulang ke Map di setiap perbandingan sort (perbandingan
+    // lama O(n) per langkah bikin sort jadi ~O(n² log n) dan freeze saat data banyak hari).
+    const days=[...dates.values()].sort((a,b)=>b.dk-a.dk);
     let detailBody="", detailTotal={qty:0,salesQty:{}};
     days.forEach(day=>{
       // Re-bucket per-tanggal: gabungkan semua transaksi dengan ukuran botol yang sama
@@ -4238,6 +4343,12 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
                 if (backupData.metadata) {
                   await db.meta.put({ key: "filters", value: backupData.metadata });
                 }
+              } else {
+                // Fallback: IndexedDB tidak tersedia di browser ini, restore ke array di memori
+                // supaya data tetap masuk (sebelumnya jalur ini tidak melakukan apa-apa tapi tetap
+                // menampilkan toast "berhasil").
+                rows = backupData.transactions.slice();
+                await refreshAfterDataChange();
               }
               hideBusy();
               showToast("✅ Restore berhasil!", "success");
@@ -4264,7 +4375,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     }
     try {
       showBusy("Upload ke cloud...");
-      await pushToCloud();
+      await pushToCloud(false);
       hideBusy();
       showToast("✅ Upload cloud berhasil!", "success");
       setStatus("Data device berhasil di-upload ke cloud");
@@ -4281,7 +4392,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     }
     try {
       showBusy("Download dari cloud...");
-      const changed = await pullFromCloud(false);
+      const changed = await pullFromCloud(false, false);
       if (changed) {
         await restoreFromDB();
         hideBusy();
@@ -4345,6 +4456,9 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   window.restoreFromFileBackup = restoreFromFileBackup;
   window.uploadDataToCloud = uploadDataToCloud;
   window.downloadDataFromCloud = downloadDataFromCloud;
+  window.copySyncId = copySyncId;
+  window.generateNewSyncId = generateNewSyncId;
+  window.applyCustomSyncId = applyCustomSyncId;
   window.addEventListener("dragover", (e) => {
     e.preventDefault();
   });
