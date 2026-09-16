@@ -101,19 +101,24 @@
     var root = document.getElementById('menuRoot');
     var d = document.getElementById('menuPaneData');
     var h = document.getElementById('menuPaneHarga');
+    var hj = document.getElementById('menuPaneHargaJual');
     if (root) root.style.display = 'none';
     if (d) d.style.display = (name === 'data') ? 'block' : 'none';
     if (h) h.style.display = (name === 'harga') ? 'block' : 'none';
+    if (hj) hj.style.display = (name === 'hargajual') ? 'block' : 'none';
   };
   window.closeMenuPane = function(){
     var root = document.getElementById('menuRoot');
     var d = document.getElementById('menuPaneData');
     var h = document.getElementById('menuPaneHarga');
+    var hj = document.getElementById('menuPaneHargaJual');
     if (root) root.style.display = 'block';
     if (d) d.style.display = 'none';
     if (h) h.style.display = 'none';
+    if (hj) hj.style.display = 'none';
   };
   window.applyBulkHargaBeli = function(){};
+  window.applyBulkHargaJual = function(){};
   window.onFileChange = onFileChange;
 
   window.processFile = function(){
@@ -628,7 +633,12 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
             </button>
             <button type="button" class="menu-nav-item" onclick="openMenuPane('harga')">
               <span class="menu-nav-ico">🏷</span>
-              <span class="menu-nav-txt"><b>Menu Harga</b><small>Ubah harga beli massal per rentang tanggal</small></span>
+              <span class="menu-nav-txt"><b>Menu Harga Beli</b><small>Ubah harga beli massal per rentang tanggal</small></span>
+              <span class="menu-nav-chev">›</span>
+            </button>
+            <button type="button" class="menu-nav-item" onclick="openMenuPane('hargajual')">
+              <span class="menu-nav-ico">💰</span>
+              <span class="menu-nav-txt"><b>Menu Harga Jual</b><small>Ubah harga jual massal per rentang tanggal</small></span>
               <span class="menu-nav-chev">›</span>
             </button>
             <button type="button" class="menu-nav-item" onclick="openMenuPane('backup')">
@@ -675,7 +685,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
           <button type="button" class="menu-back" onclick="closeMenuPane()">‹ Kembali ke MENU</button>
           <div class="menu-title">🖊 Harga Beli Massal per Rentang Tanggal</div>
           <div class="menu-section">
-            <div class="hint" style="margin-top:0">Fitur ini untuk edit massal. Pilih rentang tanggal (boleh satu hari saja, atau satu bulan penuh) + produk, lalu isi harga beli baru. Cocok untuk kasus harga beli yang berubah di tengah bulan.</div>
+            <div class="hint" style="margin-top:0">Fitur ini untuk edit massal. Pilih rentang tanggal (boleh satu hari saja, atau satu bulan penuh) + produk, lalu isi harga beli baru. Cocok untuk kasus harga beli yang berubah di tengah bulan. Daftar produk hanya menampilkan produk <b>Fitri</b>.</div>
             <div class="menu-field-label">Tanggal mulai</div>
             <input type="date" id="hbTglMulai">
             <div class="menu-field-label">Tanggal akhir</div>
@@ -686,6 +696,23 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
             <div class="hint">Pilih <b>rentang tanggal + produk</b>, isi harga beli baru. Hanya transaksi produk tersebut dalam rentang tanggal tersebut yang akan berubah.</div>
           </div>
           <div class="hint">Format sumber mengikuti Excel terbaru: <b>Harga Beli</b> dan <b>Kd Customer</b> ikut dibaca.</div>
+        </div>
+
+        <div id="menuPaneHargaJual" class="menu-view" style="display:none">
+          <button type="button" class="menu-back" onclick="closeMenuPane()">‹ Kembali ke MENU</button>
+          <div class="menu-title">💰 Harga Jual Massal per Rentang Tanggal</div>
+          <div class="menu-section">
+            <div class="hint" style="margin-top:0">Fitur ini untuk edit massal. Pilih rentang tanggal (boleh satu hari saja, atau satu bulan penuh) + produk, lalu isi harga jual baru. Cocok untuk kasus harga jual yang berubah di tengah bulan. Daftar produk hanya menampilkan produk <b>Fitri</b>.</div>
+            <div class="menu-field-label">Tanggal mulai</div>
+            <input type="date" id="hjTglMulai">
+            <div class="menu-field-label">Tanggal akhir</div>
+            <input type="date" id="hjTglAkhir">
+            <select id="hjProduk"><option value="">Pilih produk...</option></select>
+            <input type="text" id="hjHargaBaru" inputmode="numeric" placeholder="Masukkan harga jual baru">
+            <button type="button" class="hb-apply-btn" onclick="applyBulkHargaJual()">Ubah Harga Jual Produk</button>
+            <div class="hint">Pilih <b>rentang tanggal + produk</b>, isi harga jual baru. Hanya transaksi produk tersebut dalam rentang tanggal tersebut yang akan berubah.</div>
+          </div>
+          <div class="hint">Format sumber mengikuti Excel terbaru: <b>Harga Jual</b> dan <b>Kd Customer</b> ikut dibaca.</div>
         </div>
 
         <div id="menuPaneBackup" class="menu-view" style="display:none">
@@ -1936,25 +1963,30 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     const root = document.getElementById("menuRoot");
     const d = document.getElementById("menuPaneData");
     const h = document.getElementById("menuPaneHarga");
+    const hj = document.getElementById("menuPaneHargaJual");
     const b = document.getElementById("menuPaneBackup");
     if (root) root.style.display = "none";
     if (d) d.style.display = name === "data" ? "block" : "none";
     if (h) h.style.display = name === "harga" ? "block" : "none";
+    if (hj) hj.style.display = name === "hargajual" ? "block" : "none";
     if (b) b.style.display = name === "backup" ? "block" : "none";
-    if (name === "harga") populateHargaProdukSelect();
+    if (name === "harga") populateHargaProdukSelect("hbProduk");
+    if (name === "hargajual") populateHargaProdukSelect("hjProduk");
   }
   function closeMenuPane() {
     const root = document.getElementById("menuRoot");
     const d = document.getElementById("menuPaneData");
     const h = document.getElementById("menuPaneHarga");
+    const hj = document.getElementById("menuPaneHargaJual");
     const b = document.getElementById("menuPaneBackup");
     if (root) root.style.display = "block";
     if (d) d.style.display = "none";
     if (h) h.style.display = "none";
+    if (hj) hj.style.display = "none";
     if (b) b.style.display = "none";
   }
-  function populateHargaProdukSelect() {
-    const sel = document.getElementById("hbProduk");
+  function populateHargaProdukSelect(selectId) {
+    const sel = document.getElementById(selectId || "hbProduk");
     if (!sel) return;
     const prev = sel.value;
     let list = [];
@@ -1963,6 +1995,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
     } else if (rows && rows.length) {
       list = [...new Set(rows.map((x) => String(x.produk || x.Produk || "").trim()).filter(Boolean))];
     }
+    list = list.filter((p) => isFitriProduct(p));
     list.sort((a, b) => a.localeCompare(b, "id"));
     sel.innerHTML = '<option value="">Pilih produk...</option>' + list.map((p) => '<option value="' + escHtml(p) + '">' + escHtml(p) + "</option>").join("");
     if (prev && list.indexOf(prev) >= 0) sel.value = prev;
@@ -2042,6 +2075,76 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
           closeDd();
         } catch (err) {
           showToast("Gagal mengubah harga beli: " + err.message, "error");
+        } finally {
+          hideBusy && hideBusy();
+        }
+      }
+    );
+  }
+  async function applyBulkHargaJual() {
+    const sEl = document.getElementById("hjTglMulai");
+    const eEl = document.getElementById("hjTglAkhir");
+    const pEl = document.getElementById("hjProduk");
+    const hEl = document.getElementById("hjHargaBaru");
+    const sVal = sEl ? sEl.value : "";
+    const eVal = eEl ? eEl.value : "";
+    const produk = pEl ? pEl.value : "";
+    if (!sVal || !eVal) return showToast("Isi tanggal mulai dan tanggal akhir terlebih dahulu.", "warning");
+    if (!produk) return showToast("Pilih produk yang akan diubah harga jualnya.", "warning");
+    const hargaBaru = parseHargaInput(hEl ? hEl.value : "");
+    if (!isFinite(hargaBaru) || hargaBaru < 0) return showToast("Harga jual baru tidak valid.", "warning");
+    const sp = sVal.split("-"), ep = eVal.split("-");
+    let startMs = new Date(+sp[0], +sp[1] - 1, +sp[2]).getTime();
+    let endMs = new Date(+ep[0], +ep[1] - 1, +ep[2]).getTime();
+    if (startMs > endMs) {
+      const t = startMs;
+      startMs = endMs;
+      endMs = t;
+    }
+    const pKey = U(produk);
+    let targets = [];
+    if (useIDB && db) {
+      try {
+        targets = await db.tx.where("produk").equals(produk).toArray();
+      } catch (e) {
+        try {
+          targets = await db.tx.toArray();
+        } catch (e2) {
+          targets = [];
+        }
+      }
+      targets = targets.filter((r) => U(r.produk) === pKey && inDateRange(r.tanggal, startMs, endMs));
+    } else {
+      targets = (rows || []).filter((r) => U(r.produk || r.Produk) === pKey && inDateRange(r.tanggal || r.Tanggal, startMs, endMs));
+    }
+    if (!targets.length) return showToast("Tidak ada transaksi " + produk + " pada rentang tanggal tersebut.", "warning");
+    const changed = targets.filter((r) => N(r.hargaJual) !== hargaBaru).length;
+    const rangeLbl = fmtTgl(sVal) + " s/d " + fmtTgl(eVal);
+    showConfirmDialog(
+      "Ubah Harga Jual Massal",
+      "Ubah harga jual " + produk + " menjadi " + rp(hargaBaru) + " untuk " + targets.length.toLocaleString("id-ID") + " transaksi pada " + rangeLbl + "?",
+      async () => {
+        try {
+          showBusy && showBusy("Mengubah harga jual...");
+          if (useIDB && db) {
+            const ids = targets.map((r) => r.id).filter((x) => x != null);
+            await db.transaction("rw", db.tx, async () => {
+              for (const id of ids) await db.tx.update(id, { hargaJual: hargaBaru });
+            });
+            schedulePushToCloud();
+          } else {
+            targets.forEach((r) => {
+              r.hargaJual = hargaBaru;
+              if ("Harga Jual" in r) r["Harga Jual"] = hargaBaru;
+            });
+          }
+          await refreshAfterDataChange();
+          setStatus("Harga jual " + produk + " diubah menjadi " + rp(hargaBaru) + " pada " + targets.length.toLocaleString("id-ID") + " transaksi (" + rangeLbl + ").");
+          showToast("Harga jual diperbarui: " + targets.length.toLocaleString("id-ID") + " transaksi (" + changed.toLocaleString("id-ID") + " berubah nilainya).", "success");
+          if (hEl) hEl.value = "";
+          closeDd();
+        } catch (err) {
+          showToast("Gagal mengubah harga jual: " + err.message, "error");
         } finally {
           hideBusy && hideBusy();
         }
@@ -4209,6 +4312,7 @@ body.dark .backup-footer{background:rgba(239,68,68,.15)}
   window.openMenuPane = openMenuPane;
   window.closeMenuPane = closeMenuPane;
   window.applyBulkHargaBeli = applyBulkHargaBeli;
+  window.applyBulkHargaJual = applyBulkHargaJual;
   window.populateHargaProdukSelect = populateHargaProdukSelect;
   window.onSearchInput = onSearchInput;
   window.clearSearch = clearSearch;
