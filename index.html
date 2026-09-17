@@ -148,8 +148,8 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
     <div class="header-actions">
       <!-- Tab Transaksi dan Faktur Fitri telah dihapus agar tampilan lebih simple -->
       <nav class="header-tabs" role="tablist" aria-label="Tab utama">
-        <button class="active" id="tabBtnS6" onclick="show('s6',this)">Data Customer</button>
-        <button id="tabBtnS2" onclick="show('s2',this)">Data Penjualan Fitri</button>
+        <button id="tabBtnS6" onclick="show('s6',this)">Data Customer</button>
+        <button class="active" id="tabBtnS2" onclick="show('s2',this)">Data Penjualan Fitri</button>
         <button id="tabBtnS3" onclick="show('s3',this)">Rekap Qty Customer</button>
         <button id="tabBtnS5" onclick="show('s5',this)">Data Integration <span id="s5Badge" class="cust-choice-badge" style="display:none">0</span></button>
       </nav>
@@ -333,7 +333,7 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
   <div id="result" style="margin: 6px 0 14px; padding: 0;">
     <!-- Hanya menampilkan tab Penjualan Fitri, Rekap Qty Customer, dan Customer Pilihan -->
     <div id="table">
-      <div id="panel_s2" class="view" style="display:none">
+      <div id="panel_s2" class="view" style="display:block">
         <div id="s2ToolbarSlot">
           <div class="toolbar" id="mainToolbar">
             <div id="s3DateFilterBar" class="s3-date-filter-bar" style="display:none">
@@ -348,11 +348,11 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
             </div>
             <!-- Mode Switcher: Tabel / Kartu -->
             <div class="s2-mode-toggle" id="s2ModeToggle">
-              <button type="button" class="s2-mode-btn active" id="btnModeTable" onclick="setS2ViewMode('table')" title="Tampilan Mode Tabel">
+              <button type="button" class="s2-mode-btn" id="btnModeTable" onclick="setS2ViewMode('table')" title="Tampilan Mode Tabel">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
                 <span>Tabel</span>
               </button>
-              <button type="button" class="s2-mode-btn" id="btnModeCard" onclick="setS2ViewMode('card')" title="Tampilan Mode Kartu">
+              <button type="button" class="s2-mode-btn active" id="btnModeCard" onclick="setS2ViewMode('card')" title="Tampilan Mode Kartu">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
                 <span>Kartu</span>
               </button>
@@ -399,7 +399,7 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
                 <div class="filter-info" id="filterInfo">Pilih filter — langsung diterapkan.</div>
               </div>
             </div>
-            <div class="col-picker" id="colPicker">
+            <div class="col-picker" id="colPicker" style="display:none">
               <button type="button" class="col-picker-btn" onclick="event.stopPropagation();toggleColPicker()">☰ Kolom</button>
               <div class="col-picker-menu" id="colPickerMenu" onclick="event.stopPropagation()"></div>
             </div>
@@ -464,9 +464,9 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
             </div>
           </div>
         </div>
-        <div class="tablebox" id="s2box"></div>
-        <div class="vfootwrap" id="s2footwrap"><table class="vfoot" id="s2foot"></table></div>
-        <div class="cardbox" id="s2cardbox" style="display:none"></div>
+        <div class="tablebox" id="s2box" style="display:none"></div>
+        <div class="vfootwrap" id="s2footwrap" style="display:none"><table class="vfoot" id="s2foot"></table></div>
+        <div class="cardbox" id="s2cardbox" style="display:block"></div>
       </div>
       <div id="panel_s3" class="view" style="display:none">
         <div id="s3TierBar" class="tier-bar"></div>
@@ -514,7 +514,7 @@ body.dark .s5-active-set{background:#3b82f633;border-color:#3b82f659;color:#93c5
           <div id="s5SetsPanel" class="s5-sets-panel s5-sets-panel-full"></div>
         </div>
       </div>
-      <div id="panel_s6" class="view" style="display:block">
+      <div id="panel_s6" class="view" style="display:none">
         <div class="s6-toolbar">
           <div class="s6-search">🔍 <input type="search" id="s6SearchInput" placeholder="Cari nama / kode / alamat / kota / telp..." oninput="s6Search(this.value)" autocomplete="off"></div>
           <span class="s6-count" id="s6Count"></span>
@@ -743,7 +743,7 @@ async function restoreDriveDirHandle(){if(!(D&&b))return;try{let t=await b.meta.
         </div>
       </div>
     </div>
-  `}typeof window<"u"&&(window.loadMoreCards=function(){Mt+=36,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.showAllCards=function(){Mt=999999,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.setCardSort=function(t){if(t==="total_desc"&&!dt){typeof window.openFinPinModal=="function"&&window.openFinPinModal();return}X=t,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.copyFaktur=function(t){if(t)try{navigator.clipboard.writeText(t).then(()=>{typeof window.showToast=="function"&&window.showToast("No. Faktur "+t+" disalin!","info")})}catch{typeof window.showToast=="function"&&window.showToast(t,"info")}});var P=[],mt=[],S3FULL=[],q=[],K={qty:0,sales:0,hpp:0,profit:0,faktur:0},wt=[],Zt=[],pt="",Se=null,C="s6",W="ALL",G=null,Q=null,M="ALL",st="tanggal",J=!1,Z=!1,A="fitri";try{let t=localStorage.getItem("fp_prod_scope");(t==="all"||t==="fitri"||t==="non_fitri")&&(A=t)}catch{}var gt="card";try{let t=localStorage.getItem("fp_s2_view_mode");(t==="card"||t==="table")&&(gt=t)}catch{}window.setS2ViewMode=function(t){gt=t;try{localStorage.setItem("fp_s2_view_mode",t)}catch{}ae(),C==="s2"&&yt()};function ae(){let t=document.getElementById("btnModeTable"),e=document.getElementById("btnModeCard");t&&t.classList.toggle("active",gt==="table"),e&&e.classList.toggle("active",gt==="card")}window.updateS2ModeButtons=ae;var v=new Set;try{let t=localStorage.getItem("fp_selected_cust");if(t){let e=JSON.parse(t);Array.isArray(e)&&e.forEach(n=>v.add(n))}}catch{}
+  `}typeof window<"u"&&(window.loadMoreCards=function(){Mt+=36,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.showAllCards=function(){Mt=999999,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.setCardSort=function(t){if(t==="total_desc"&&!dt){typeof window.openFinPinModal=="function"&&window.openFinPinModal();return}X=t,window.renderCardViewS2Current&&window.renderCardViewS2Current()},window.copyFaktur=function(t){if(t)try{navigator.clipboard.writeText(t).then(()=>{typeof window.showToast=="function"&&window.showToast("No. Faktur "+t+" disalin!","info")})}catch{typeof window.showToast=="function"&&window.showToast(t,"info")}});var P=[],mt=[],S3FULL=[],q=[],K={qty:0,sales:0,hpp:0,profit:0,faktur:0},wt=[],Zt=[],pt="",Se=null,C="s2",W="ALL",G=null,Q=null,M="ALL",st="tanggal",J=!1,Z=!1,A="fitri";try{let t=localStorage.getItem("fp_prod_scope");(t==="all"||t==="fitri"||t==="non_fitri")&&(A=t)}catch{}var gt="card";try{let t=localStorage.getItem("fp_s2_view_mode");(t==="card"||t==="table")&&(gt=t)}catch{}window.setS2ViewMode=function(t){gt=t;try{localStorage.setItem("fp_s2_view_mode",t)}catch{}ae(),C==="s2"&&yt()};function ae(){let t=document.getElementById("btnModeTable"),e=document.getElementById("btnModeCard");t&&t.classList.toggle("active",gt==="table"),e&&e.classList.toggle("active",gt==="card")}window.updateS2ModeButtons=ae;var v=new Set;try{let t=localStorage.getItem("fp_selected_cust");if(t){let e=JSON.parse(t);Array.isArray(e)&&e.forEach(n=>v.add(n))}}catch{}
 var savedCustSets=[];try{let t=localStorage.getItem("fp_saved_cust_sets");if(t){let e=JSON.parse(t);Array.isArray(e)&&(savedCustSets=e)}}catch{}
 var activeSetName="";try{activeSetName=localStorage.getItem("fp_active_cust_set")||""}catch{}
 function persistSelectedCust(){try{localStorage.setItem("fp_selected_cust",JSON.stringify(Array.from(v)))}catch{}}
