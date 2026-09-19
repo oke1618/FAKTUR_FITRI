@@ -203,6 +203,21 @@ body.dark .kode-table tbody tr:nth-child(even) td{background:#ffffff05}
 .sc-pager button:hover:not(:disabled){background:var(--btn-hover)}
 .sc-pager button:disabled{cursor:not-allowed;opacity:.45}
 /* Satu baris penuh untuk toolbar NoTx */
+.sc-topbar-rekap{
+  flex-wrap:nowrap;
+  align-items:flex-end;
+  gap:8px;
+}
+.sc-topbar-rekap .sc-summary{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:auto;
+  flex-shrink:0;
+}
+.sc-topbar-rekap .sc-summary .sc-export{
+  margin-left:4px;
+}
 .sc-topbar-notx{
   flex-wrap:nowrap;
   align-items:flex-end;
@@ -632,7 +647,7 @@ body.dark tr.s5-row-merged td{background:#78350f88!important}
             <button type="button" class="sc-subtab" id="scSubtabNoTx" onclick="showScSubtab('notx')">🚫 Customer Belum Order <span class="sc-badge" id="scNoTxBadge" style="display:none">0</span></button>
           </div>
         </div>
-        <div class="sc-topbar" id="scSharedTopbar">
+        <div class="sc-topbar sc-topbar-rekap" id="scSharedTopbar">
           <div class="sc-filters">
             <div class="sc-filter">
               <label for="scMonth">Bulan</label>
@@ -648,16 +663,14 @@ body.dark tr.s5-row-merged td{background:#78350f88!important}
             </div>
             <button type="button" class="sc-reset" onclick="resetSalesCustomerFilters()">Reset</button>
           </div>
-        </div>
-        <div id="scViewRekap">
-          <div class="sc-topbar sc-topbar-sub">
-            <div class="sc-summary">
-              <span><b id="scCustomerCount">0</b> Customer</span>
-              <span>•</span>
-              <span>Total Qty <b id="scTotalQty">0</b></span>
-            </div>
+          <div class="sc-summary" id="scRekapSummary">
+            <span><b id="scCustomerCount">0</b> Customer</span>
+            <span>•</span>
+            <span>Total Qty <b id="scTotalQty">0</b></span>
             <button type="button" class="sc-export" onclick="exportSalesCustomerExcel()">📥 Excel</button>
           </div>
+        </div>
+        <div id="scViewRekap">
           <div class="tablebox sc-tablebox" id="scBox"></div>
           <div class="vfootwrap" id="scFootWrap"><table class="vfoot" id="scFoot"></table></div>
         </div>
