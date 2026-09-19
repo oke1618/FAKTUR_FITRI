@@ -141,6 +141,52 @@ body.dark .kode-table tbody tr:nth-child(even) td{background:#ffffff05}
 .kode-product-table th:nth-child(3),.kode-product-table td:nth-child(3){width:33%}
 .kode-note{color:var(--muted);margin-top:10px;font-size:10.5px;line-height:1.4}
 @media(max-width:800px){.kode-grid{grid-template-columns:1fr;gap:10px}.kode-card-title{padding:9px 10px}.kode-table{font-size:11.5px}.kode-table th,.kode-table td{padding:6px 7px}}
+
+/* ===== Sales-Customer ===== */
+.sc-topbar{
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:8px;
+  box-shadow:var(--card-shadow);
+  padding:8px 10px;
+  margin:4px 0 9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.sc-filters{display:flex;align-items:end;gap:7px;flex-wrap:wrap}
+.sc-filter{display:flex;flex-direction:column;gap:3px;min-width:155px}
+.sc-filter label{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.sc-filter select{
+  min-width:155px;height:30px;padding:4px 8px;border-radius:6px;
+  border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);
+  font-size:11.5px;outline:none;
+}
+.sc-reset,.sc-export{
+  height:30px;padding:4px 11px;border-radius:6px;cursor:pointer;
+  font-size:11px;font-weight:700;border:1px solid var(--btn-border);
+}
+.sc-reset{background:var(--btn-bg);color:var(--btn-text)}
+.sc-reset:hover{background:var(--btn-hover)}
+.sc-export{background:#16a34a;color:#fff;border-color:#15803d}
+.sc-export:hover{background:#15803d}
+.sc-summary{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px;white-space:nowrap}
+.sc-summary b{color:var(--btn-text);font-size:13px}
+.sc-tablebox{max-height:calc(100vh - 255px);min-height:220px}
+.sc-table{min-width:980px;font-size:11.5px}
+.sc-table th{padding:7px 6px;text-align:center;white-space:normal;line-height:1.2}
+.sc-table td{padding:6px 7px;height:32px}
+.sc-table td.num{text-align:right}
+.sc-table td.sales-cell,.sc-table td.customer-cell{font-weight:600}
+.sc-table tfoot td{font-weight:800;background:var(--tfoot-bg)}
+@media(max-width:720px){
+  .sc-filter,.sc-filter select{min-width:140px;width:100%}
+  .sc-filters{width:100%}
+  .sc-summary{width:100%;justify-content:flex-start}
+  .sc-tablebox{max-height:calc(100vh - 300px)}
+}
 </style>
 <style>
 .s5-merge-section{background:transparent;border:none;border-radius:0;margin-top:12px;padding:0;box-shadow:none}
@@ -188,6 +234,7 @@ body.dark tr.s5-row-merged td{background:#78350f88!important}
       <nav class="header-tabs" role="tablist" aria-label="Tab utama">
         <button class="active" id="tabBtnS2" onclick="show('s2',this)">Data Penjualan Fitri</button>
         <button id="tabBtnS3" onclick="show('s3',this)">Rekap Qty Customer</button>
+        <button id="tabBtnSC" onclick="show('sc',this)">Sales-Customer</button>
         <button id="tabBtnS5" onclick="show('s5',this)">Data Integration <span id="s5Badge" class="cust-choice-badge" style="display:none">0</span></button>
         <button id="tabBtnS6" onclick="show('s6',this)" style="display:none">Data Customer</button>
         <button id="tabBtnKode" onclick="show('kode',this)" style="display:none">Daftar Kode</button>
@@ -542,6 +589,34 @@ body.dark tr.s5-row-merged td{background:#78350f88!important}
         </div>
         <div class="tablebox" id="s3box"></div>
         <div class="vfootwrap" id="s3footwrap"><table class="vfoot" id="s3foot"></table></div>
+      </div>
+
+      <div id="panel_sc" class="view" style="display:none">
+        <div class="sc-topbar">
+          <div class="sc-filters">
+            <div class="sc-filter">
+              <label for="scMonth">Bulan</label>
+              <select id="scMonth" onchange="renderSalesCustomerTab()">
+                <option value="">Semua bulan</option>
+              </select>
+            </div>
+            <div class="sc-filter">
+              <label for="scSales">Sales</label>
+              <select id="scSales" onchange="renderSalesCustomerTab()">
+                <option value="">Semua sales</option>
+              </select>
+            </div>
+            <button type="button" class="sc-reset" onclick="resetSalesCustomerFilters()">Reset</button>
+            <button type="button" class="sc-export" onclick="exportSalesCustomerExcel()">📥 Excel</button>
+          </div>
+          <div class="sc-summary">
+            <span><b id="scCustomerCount">0</b> Customer</span>
+            <span>•</span>
+            <span>Total Qty <b id="scTotalQty">0</b></span>
+          </div>
+        </div>
+        <div class="tablebox sc-tablebox" id="scBox"></div>
+        <div class="vfootwrap" id="scFootWrap"><table class="vfoot" id="scFoot"></table></div>
       </div>
       <div id="panel_s5" class="view" style="display:none">
         <div class="s5-top-row" id="s5TopRow">
@@ -1300,7 +1375,8 @@ function saveCustSetAuto(){
 function submitSaveSet(){saveCustSetAuto()}
 function loadSelectedCustSet(){let sel=document.getElementById("s5SetsSelect");let id=sel?sel.value:"";if(!id){h("Pilih set yang ingin dimuat.","warning");return}let set=savedCustSets.find(s=>s.id===id);if(!set||!set.keys){h("Set tidak ditemukan.","error");return}ut("Muat Set","Muat set \""+set.name+"\" ("+set.keys.length+" customer)? Pilihan saat ini akan diganti.",()=>{v.clear();set.keys.forEach(k=>v.add(k));persistSelectedCust();activeSetName=set.name;persistActiveSetName();Pt();Kt();it();renderS5SetsPanel();h("Set \""+set.name+"\" dimuat ("+v.size+" customer).","success")})}
 function deleteSelectedCustSet(){let sel=document.getElementById("s5SetsSelect");let id=sel?sel.value:"";if(!id){h("Pilih set yang ingin dihapus.","warning");return}let set=savedCustSets.find(s=>s.id===id);if(!set){h("Set tidak ditemukan.","error");return}ut("Hapus Set","Hapus set \""+set.name+"\" secara permanen?",()=>{savedCustSets=savedCustSets.filter(s=>s.id!==id);persistSavedSets();if(activeSetName===set.name){activeSetName="";persistActiveSetName()}renderS5SetsPanel();h("Set \""+set.name+"\" dihapus.","success")})}
-window.openSaveSetModal=openSaveSetModal;window.closeSaveSetModal=closeSaveSetModal;window.submitSaveSet=submitSaveSet;window.saveCustSetAuto=saveCustSetAuto;window.buildAutoSetName=buildAutoSetName;window.showS5Subtab=showS5Subtab;window.toggleS5SaveMenu=toggleS5SaveMenu;window.closeS5SaveMenu=closeS5SaveMenu;window.loadCustSetById=loadCustSetById;window.deleteCustSetById=deleteCustSetById;window.loadSelectedCustSet=loadSelectedCustSet;window.deleteSelectedCustSet=deleteSelectedCustSet;var R={month:"",sales:"",payment:""},s3Date="",V={};U.forEach(t=>{V[t.k]=t.def});var V3={};nt.forEach(t=>{V3[t.k]=t.def!==!1||t.k==="sel"});try{let t=localStorage.getItem("fp_s3_col_vis");if(t){let e=JSON.parse(t);nt.forEach(n=>{typeof e[n.k]==="boolean"&&n.k!=="sel"&&(V3[n.k]=e[n.k])})}}catch{}try{let t=localStorage.getItem("fp_col_vis");if(t){let e=JSON.parse(t);U.forEach(n=>{typeof e[n.k]=="boolean"&&(n.financial?V[n.k]=!1:V[n.k]=e[n.k])})}}catch{}var lt=[],Ie={},te="",Te="",et=null,F=[],ee="",Ce="",ft=[];function Ut(t){let e=t==="dark";document.body.classList.toggle("dark",e),document.documentElement.classList.toggle("dark",e);let n=document.getElementById("themeBtn");n&&(n.textContent=e?"\u2600\uFE0F":"\u{1F319}");try{localStorage.setItem("fp_theme",e?"dark":"light")}catch{}}function Oe(t){t&&t.stopPropagation&&t.stopPropagation();let e=document.body?document.body.classList.contains("dark"):!0;Ut(e?"light":"dark")}function He(t){t&&t.stopPropagation&&t.stopPropagation();let e=document.getElementById("menuDd");e&&e.classList.toggle("open")}function It(){let t=document.getElementById("menuDd");t&&t.classList.remove("open")}function je(t){let e=document.getElementById("menuRoot"),n=document.getElementById("menuPaneData"),o=document.getElementById("menuPaneHarga"),a=document.getElementById("menuPaneHargaJual"),l=document.getElementById("menuPaneBackup");e&&(e.style.display="none"),n&&(n.style.display=t==="data"?"block":"none"),o&&(o.style.display=t==="harga"?"block":"none"),a&&(a.style.display=t==="hargajual"?"block":"none"),l&&(l.style.display=t==="backup"?"block":"none"),t==="harga"&&Le("hbProduk"),t==="hargajual"&&Le("hjProduk"),t==="backup"&&(updateBackupInfoUI(),refreshCloudSyncInfo())}function Ue(){let t=document.getElementById("menuRoot"),e=document.getElementById("menuPaneData"),n=document.getElementById("menuPaneHarga"),o=document.getElementById("menuPaneHargaJual"),a=document.getElementById("menuPaneBackup");t&&(t.style.display="block"),e&&(e.style.display="none"),n&&(n.style.display="none"),o&&(o.style.display="none"),a&&(a.style.display="none")}function Ke(t){let e=t&&t.files?t.files[0]:null,n=document.getElementById("fileInfoBox"),o=document.getElementById("fileNameDisplay"),a=document.getElementById("fileSizeDisplay"),l=document.getElementById("processFileBtn");if(e){if(n&&(n.style.display="flex"),o&&(o.textContent=e.name),a){let u=e.size>1048576?(e.size/1048576).toFixed(1)+" MB":(e.size/1024).toFixed(0)+" KB";a.textContent="("+u+")"}l&&l.classList.add("ready"),zt("File siap: "+e.name+". Klik Proses Excel.")}else n&&(n.style.display="none"),l&&l.classList.remove("ready")}async function ve(){let t=[];if(D&&b?t=R.month?await b.tx.where("bulan").equals(R.month).toArray():await b.tx.toArray():(t=P.slice(),R.month&&(t=t.filter(e=>Ot(e.tanggal)===R.month))),R.sales&&(t=t.filter(e=>x(e.sales)===x(R.sales))),R.payment&&(t=t.filter(e=>x(e.pembayaran)===x(R.payment))),pt){let e=pt;t=t.filter(n=>{let o=String(n.faktur??n["No. Faktur"]??"").toUpperCase(),a=String(n.customer??n.Customer??"").toUpperCase(),l=String(n.sales??n.Sales??"").toUpperCase(),u=String(n.produk??n.Produk??"").toUpperCase();return o.includes(e)||a.includes(e)||l.includes(e)||u.includes(e)})}return t}async function j(){if(D&&b){let i=await b.tx.toArray();wt=[...new Set(i.map(c=>c.bulan||Ot(c.tanggal)))].sort().reverse(),Zt=[...new Set(i.map(c=>x(c.sales)).filter(Boolean))].sort()}else wt=[...new Set(P.map(i=>i.bulan||Ot(i.tanggal)))].sort().reverse(),Zt=[...new Set(P.map(i=>x(i.sales)).filter(Boolean))].sort();!R.month&&wt.length&&(R.month=wt[0]),mt=await ve(),mt.sort((i,c)=>(c._ts||0)-(i._ts||0));try{S3FULL=(D&&b)?await b.tx.toArray():(P||[]).slice()}catch(_e){S3FULL=(P||[]).slice()}let t=mt.map(i=>({"No. Faktur":i.faktur??"",Produk:i.produk??"",Sales:i.sales??"",Jumlah:w(i.jumlah),Tanggal:i.tanggal??"","Harga Jual":w(i.hargaJual),"Harga Beli":w(i.hargaBeli),Discount:w(i.discount),Total:w(i.total),Pembayaran:i.pembayaran??"",Satuan:i.satuan??"",Customer:i.customer??"","Kd Customer":i.kdCustomer??"",Alamat:i.alamat??""}));A==="fitri"?t=t.filter(i=>$(i.Produk)):A==="non_fitri"&&(t=t.filter(i=>!$(i.Produk))),W!=="ALL"&&A!=="non_fitri"&&(t=t.filter(i=>x(i.Produk).includes(W))),q=t;if(typeof minusFilterActive!=="undefined"&&minusFilterActive){minusFilterActive=false;_qBeforeMinusFilter=null;try{syncMinusFilterUI()}catch(_e){}}let e=0,n=0,o=0,a=0,l=0,u=new Set;q.forEach(i=>{let d0=String(i["No. Faktur"]||"").trim();if(d0&&isVoidedFaktur(d0))return;let c=w(i.Jumlah)*w(i["Harga Beli"]);e+=w(i.Jumlah),n+=w(i.Total),o+=c,a+=w(i.Total)-c;d0&&!u.has(d0)&&(u.add(d0),l++)}),K={qty:e,sales:n,hpp:o,profit:a,faktur:l},Jt();let m=document.getElementById("filterMonth");m&&(m.innerHTML='<option value="">Semua bulan</option>'+wt.map(i=>'<option value="'+T(i)+'">'+T(xt(i))+"</option>").join(""),m.value=R.month||"");let s=document.getElementById("filterSales");s&&(s.innerHTML='<option value="">Semua sales</option>'+Zt.map(i=>{let del=(typeof getDeliveryBySalesName==='function'?getDeliveryBySalesName(i):'')||'';let label=del?T(i)+' ('+T(del)+')':T(i);return '<option value="'+T(i)+'">'+label+'</option>'}).join(""),s.value=R.sales||"");let f=document.getElementById("deleteMonth");f&&(f.innerHTML='<option value="">Pilih bulan...</option>'+wt.map(i=>'<option value="'+T(i)+'">'+T(xt(i))+"</option>").join("")),Tt(C)}function Tt(t,e){(t==="s0"||t==="s1"||t==="s4")&&(t="s2"),C=t||"s6",Lt(),vt(),Et(),document.querySelectorAll("#table .view").forEach(s=>s.style.display="none"),document.querySelectorAll(".header-tabs button").forEach(s=>s.classList.remove("active"));let n=document.getElementById("tabBtnS2"),o=document.getElementById("tabBtnS3"),a=document.getElementById("tabBtnS5"),kd=document.getElementById("tabBtnKode");C==="s2"&&n?n.classList.add("active"):C==="s3"&&o?o.classList.add("active"):C==="s5"&&a?a.classList.add("active"):C==="kode"&&kd&&kd.classList.add("active");C==="s6"&&document.getElementById("tabBtnS6")&&document.getElementById("tabBtnS6").classList.add("active");let l=document.getElementById("colPicker"),u=document.getElementById("s2ModeToggle"),m=document.getElementById("mainToolbar");if(C==="s3"){let s=document.getElementById("s3ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="flex"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="inline-flex"),fp&&(fp.style.display=""),gd&&(gd.style.display=""),sm&&(sm.style.display=(typeof q!=="undefined"&&q&&q.length)?"block":"none"),G=null,Q=null}else if(C==="s5"){let s=document.getElementById("s5ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="none"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="none"),fp&&(fp.style.display="none"),gd&&(gd.style.display="none"),sm&&(sm.style.display="none")}else if(C==="kode"){let df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");df&&(df.style.display="none"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="none"),fp&&(fp.style.display="none"),gd&&(gd.style.display="none"),sm&&(sm.style.display="none")}else{let s=document.getElementById("s2ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="none"),u&&(u.style.display="inline-flex"),l&&(l.style.display=gt==="card"?"none":"block"),fp&&(fp.style.display=""),gd&&(gd.style.display=""),sm&&(sm.style.display=(typeof q!=="undefined"&&q&&q.length)?"block":"none"),ae()}if(C==="s6"){let s6p=document.getElementById("panel_s6");s6p&&(s6p.style.display="block"),renderCustomerTab()}else if(C==="s2"){let s=document.getElementById("panel_s2");s&&(s.style.display="block"),yt()}else if(C==="s3"){let s=document.getElementById("panel_s3");s&&(s.style.display="block"),Ct()}else if(C==="s5"){let s=document.getElementById("panel_s5");s&&(s.style.display="block"),Kt()}else if(C==="kode"){let s=document.getElementById("panel_kode");s&&(s.style.display="block")}it()}function it(){let t=document.getElementById("summary");if(!t)return;if(!q||!q.length){t.style.display="none";return}t.style.display="block";let e=document.getElementById("f"),n=document.getElementById("kpi200"),o=document.getElementById("kpi400"),a=document.getElementById("kpi800"),l=document.getElementById("q"),u=document.getElementById("s"),m=document.querySelector(".kpis");if(m&&m.classList.add("fitri-mode"),C==="s3"||C==="s5"||C==="s6"||C==="kode"){t.style.display="none";return}let s=document.getElementById("kpiLbl1"),f=document.getElementById("kpiLbl2"),i=document.getElementById("kpiLbl3"),c=document.getElementById("kpiLbl4"),d=document.getElementById("kpiLbl5"),r=document.getElementById("kpiLbl6");if(C==="s5"){let I=v.size,S=0,L=0,N=0,O=0;ft.forEach(B=>{let E=x(B.Produk).replace(/\s+/g,""),_t=w(B.Jumlah);O+=_t,E.includes("200ML")||E.includes("200")&&!E.includes("400")&&!E.includes("800")?S+=_t:E.includes("400ML")||E.includes("400")&&!E.includes("200")&&!E.includes("800")?L+=_t:(E.includes("800ML")||E.includes("800")&&!E.includes("200")&&!E.includes("400"))&&(N+=_t)});let kt=ft.length;e&&(e.textContent=I.toLocaleString("id-ID")+" Cust"),n&&(n.textContent=S.toLocaleString("id-ID")),o&&(o.textContent=L.toLocaleString("id-ID")),a&&(a.textContent=N.toLocaleString("id-ID")),l&&(l.textContent=O.toLocaleString("id-ID")),u&&(u.textContent=kt.toLocaleString("id-ID")+" Baris"),s&&(s.textContent="CUSTOMER TERPILIH"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY PILIHAN"),r&&(r.textContent="BARIS TRANSAKSI");return}let p=new Set((q||[]).map(I=>I.Customer||I["Kd Customer"]||"").filter(Boolean)).size,g=0,k=0,y=0;q.forEach(I=>{let S=x(I.Produk).replace(/\s+/g,""),L=w(I.Jumlah);S.includes("200ML")||S.includes("200")&&!S.includes("400")&&!S.includes("800")?g+=L:S.includes("400ML")||S.includes("400")&&!S.includes("200")&&!S.includes("800")?k+=L:(S.includes("800ML")||S.includes("800")&&!S.includes("200")&&!S.includes("400"))&&(y+=L)}),e&&(e.textContent=(K.faktur||0).toLocaleString("id-ID")),n&&(n.textContent=g.toLocaleString("id-ID")),o&&(o.textContent=k.toLocaleString("id-ID")),a&&(a.textContent=y.toLocaleString("id-ID")),l&&(l.textContent=(K.qty||0).toLocaleString("id-ID")),u&&(u.textContent=p.toLocaleString("id-ID")),A==="non_fitri"?(s&&(s.textContent="TOTAL FAKTUR RIPA RUPA"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY RIPA RUPA"),r&&(r.textContent="TOTAL CUSTOMER")):A==="all"?(s&&(s.textContent="TOTAL FAKTUR (SEMUA)"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY (SEMUA)"),r&&(r.textContent="TOTAL CUSTOMER")):(s&&(s.textContent="TOTAL FAKTUR FITRI"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY FITRI"),r&&(r.textContent="TOTAL CUSTOMER FITRI"))}function Je(){let t=q.length,e=new Map;for(let u=0;u<t;u++){let m=q[u],s=String(m["No. Faktur"]||"").trim()||"__EMPTY__";e.set(s,(e.get(s)||0)+w(m.Total))}let n=new Uint8Array(t),o=new Int32Array(t),a=new Set,l=0;for(let u=0;u<t;u++){let m=q[u],s=String(m["No. Faktur"]||"").trim()||"__EMPTY__";a.has(s)||(a.add(s),n[u]=1,l++,o[u]=l)}et={n:t,nominalMap:e,isFirst:n,noArr:o}}
+window.openSaveSetModal=openSaveSetModal;window.closeSaveSetModal=closeSaveSetModal;window.submitSaveSet=submitSaveSet;window.saveCustSetAuto=saveCustSetAuto;window.buildAutoSetName=buildAutoSetName;window.showS5Subtab=showS5Subtab;window.toggleS5SaveMenu=toggleS5SaveMenu;window.closeS5SaveMenu=closeS5SaveMenu;window.loadCustSetById=loadCustSetById;window.deleteCustSetById=deleteCustSetById;window.loadSelectedCustSet=loadSelectedCustSet;window.deleteSelectedCustSet=deleteSelectedCustSet;var R={month:"",sales:"",payment:""},s3Date="",V={};U.forEach(t=>{V[t.k]=t.def});var V3={};nt.forEach(t=>{V3[t.k]=t.def!==!1||t.k==="sel"});try{let t=localStorage.getItem("fp_s3_col_vis");if(t){let e=JSON.parse(t);nt.forEach(n=>{typeof e[n.k]==="boolean"&&n.k!=="sel"&&(V3[n.k]=e[n.k])})}}catch{}try{let t=localStorage.getItem("fp_col_vis");if(t){let e=JSON.parse(t);U.forEach(n=>{typeof e[n.k]=="boolean"&&(n.financial?V[n.k]=!1:V[n.k]=e[n.k])})}}catch{}var lt=[],Ie={},te="",Te="",et=null,F=[],ee="",Ce="",ft=[];function Ut(t){let e=t==="dark";document.body.classList.toggle("dark",e),document.documentElement.classList.toggle("dark",e);let n=document.getElementById("themeBtn");n&&(n.textContent=e?"\u2600\uFE0F":"\u{1F319}");try{localStorage.setItem("fp_theme",e?"dark":"light")}catch{}}function Oe(t){t&&t.stopPropagation&&t.stopPropagation();let e=document.body?document.body.classList.contains("dark"):!0;Ut(e?"light":"dark")}function He(t){t&&t.stopPropagation&&t.stopPropagation();let e=document.getElementById("menuDd");e&&e.classList.toggle("open")}function It(){let t=document.getElementById("menuDd");t&&t.classList.remove("open")}function je(t){let e=document.getElementById("menuRoot"),n=document.getElementById("menuPaneData"),o=document.getElementById("menuPaneHarga"),a=document.getElementById("menuPaneHargaJual"),l=document.getElementById("menuPaneBackup");e&&(e.style.display="none"),n&&(n.style.display=t==="data"?"block":"none"),o&&(o.style.display=t==="harga"?"block":"none"),a&&(a.style.display=t==="hargajual"?"block":"none"),l&&(l.style.display=t==="backup"?"block":"none"),t==="harga"&&Le("hbProduk"),t==="hargajual"&&Le("hjProduk"),t==="backup"&&(updateBackupInfoUI(),refreshCloudSyncInfo())}function Ue(){let t=document.getElementById("menuRoot"),e=document.getElementById("menuPaneData"),n=document.getElementById("menuPaneHarga"),o=document.getElementById("menuPaneHargaJual"),a=document.getElementById("menuPaneBackup");t&&(t.style.display="block"),e&&(e.style.display="none"),n&&(n.style.display="none"),o&&(o.style.display="none"),a&&(a.style.display="none")}function Ke(t){let e=t&&t.files?t.files[0]:null,n=document.getElementById("fileInfoBox"),o=document.getElementById("fileNameDisplay"),a=document.getElementById("fileSizeDisplay"),l=document.getElementById("processFileBtn");if(e){if(n&&(n.style.display="flex"),o&&(o.textContent=e.name),a){let u=e.size>1048576?(e.size/1048576).toFixed(1)+" MB":(e.size/1024).toFixed(0)+" KB";a.textContent="("+u+")"}l&&l.classList.add("ready"),zt("File siap: "+e.name+". Klik Proses Excel.")}else n&&(n.style.display="none"),l&&l.classList.remove("ready")}async function ve(){let t=[];if(D&&b?t=R.month?await b.tx.where("bulan").equals(R.month).toArray():await b.tx.toArray():(t=P.slice(),R.month&&(t=t.filter(e=>Ot(e.tanggal)===R.month))),R.sales&&(t=t.filter(e=>x(e.sales)===x(R.sales))),R.payment&&(t=t.filter(e=>x(e.pembayaran)===x(R.payment))),pt){let e=pt;t=t.filter(n=>{let o=String(n.faktur??n["No. Faktur"]??"").toUpperCase(),a=String(n.customer??n.Customer??"").toUpperCase(),l=String(n.sales??n.Sales??"").toUpperCase(),u=String(n.produk??n.Produk??"").toUpperCase();return o.includes(e)||a.includes(e)||l.includes(e)||u.includes(e)})}return t}async function j(){if(D&&b){let i=await b.tx.toArray();wt=[...new Set(i.map(c=>c.bulan||Ot(c.tanggal)))].sort().reverse(),Zt=[...new Set(i.map(c=>x(c.sales)).filter(Boolean))].sort()}else wt=[...new Set(P.map(i=>i.bulan||Ot(i.tanggal)))].sort().reverse(),Zt=[...new Set(P.map(i=>x(i.sales)).filter(Boolean))].sort();!R.month&&wt.length&&(R.month=wt[0]),mt=await ve(),mt.sort((i,c)=>(c._ts||0)-(i._ts||0));try{S3FULL=(D&&b)?await b.tx.toArray():(P||[]).slice()}catch(_e){S3FULL=(P||[]).slice()}let t=mt.map(i=>({"No. Faktur":i.faktur??"",Produk:i.produk??"",Sales:i.sales??"",Jumlah:w(i.jumlah),Tanggal:i.tanggal??"","Harga Jual":w(i.hargaJual),"Harga Beli":w(i.hargaBeli),Discount:w(i.discount),Total:w(i.total),Pembayaran:i.pembayaran??"",Satuan:i.satuan??"",Customer:i.customer??"","Kd Customer":i.kdCustomer??"",Alamat:i.alamat??""}));A==="fitri"?t=t.filter(i=>$(i.Produk)):A==="non_fitri"&&(t=t.filter(i=>!$(i.Produk))),W!=="ALL"&&A!=="non_fitri"&&(t=t.filter(i=>x(i.Produk).includes(W))),q=t;if(typeof minusFilterActive!=="undefined"&&minusFilterActive){minusFilterActive=false;_qBeforeMinusFilter=null;try{syncMinusFilterUI()}catch(_e){}}let e=0,n=0,o=0,a=0,l=0,u=new Set;q.forEach(i=>{let d0=String(i["No. Faktur"]||"").trim();if(d0&&isVoidedFaktur(d0))return;let c=w(i.Jumlah)*w(i["Harga Beli"]);e+=w(i.Jumlah),n+=w(i.Total),o+=c,a+=w(i.Total)-c;d0&&!u.has(d0)&&(u.add(d0),l++)}),K={qty:e,sales:n,hpp:o,profit:a,faktur:l},Jt();let m=document.getElementById("filterMonth");m&&(m.innerHTML='<option value="">Semua bulan</option>'+wt.map(i=>'<option value="'+T(i)+'">'+T(xt(i))+"</option>").join(""),m.value=R.month||"");let s=document.getElementById("filterSales");s&&(s.innerHTML='<option value="">Semua sales</option>'+Zt.map(i=>{let del=(typeof getDeliveryBySalesName==='function'?getDeliveryBySalesName(i):'')||'';let label=del?T(i)+' ('+T(del)+')':T(i);return '<option value="'+T(i)+'">'+label+'</option>'}).join(""),s.value=R.sales||"");let f=document.getElementById("deleteMonth");f&&(f.innerHTML='<option value="">Pilih bulan...</option>'+wt.map(i=>'<option value="'+T(i)+'">'+T(xt(i))+"</option>").join("")),Tt(C)}function Tt(t,e){(t==="s0"||t==="s1"||t==="s4")&&(t="s2"),C=t||"s6",Lt(),vt(),Et(),document.querySelectorAll("#table .view").forEach(s=>s.style.display="none"),document.querySelectorAll(".header-tabs button").forEach(s=>s.classList.remove("active"));let n=document.getElementById("tabBtnS2"),o=document.getElementById("tabBtnS3"),scb=document.getElementById("tabBtnSC"),a=document.getElementById("tabBtnS5"),kd=document.getElementById("tabBtnKode");C==="s2"&&n?n.classList.add("active"):C==="s3"&&o?o.classList.add("active"):C==="sc"&&scb?scb.classList.add("active"):C==="s5"&&a?a.classList.add("active"):C==="kode"&&kd&&kd.classList.add("active");C==="s6"&&document.getElementById("tabBtnS6")&&document.getElementById("tabBtnS6").classList.add("active");let l=document.getElementById("colPicker"),u=document.getElementById("s2ModeToggle"),m=document.getElementById("mainToolbar");if(C==="s3"){let s=document.getElementById("s3ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="flex"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="inline-flex"),fp&&(fp.style.display=""),gd&&(gd.style.display=""),sm&&(sm.style.display=(typeof q!=="undefined"&&q&&q.length)?"block":"none"),G=null,Q=null}else if(C==="sc"){let df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");df&&(df.style.display="none"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="none"),fp&&(fp.style.display="none"),gd&&(gd.style.display="none"),sm&&(sm.style.display="none"),renderSalesCustomerTab()
+}else if(C==="s5"){let s=document.getElementById("s5ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="none"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="none"),fp&&(fp.style.display="none"),gd&&(gd.style.display="none"),sm&&(sm.style.display="none")}else if(C==="kode"){let df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");df&&(df.style.display="none"),u&&(u.style.display="none"),l&&(l.style.display="none"),document.getElementById("s3ColPicker")&&(document.getElementById("s3ColPicker").style.display="none"),fp&&(fp.style.display="none"),gd&&(gd.style.display="none"),sm&&(sm.style.display="none")}else{let s=document.getElementById("s2ToolbarSlot"),df=document.getElementById("s3DateFilterBar"),fp=document.getElementById("filterPicker"),gd=document.getElementById("gearDd"),sm=document.getElementById("summary");s&&m&&m.parentElement!==s&&s.appendChild(m),df&&(df.style.display="none"),u&&(u.style.display="inline-flex"),l&&(l.style.display=gt==="card"?"none":"block"),fp&&(fp.style.display=""),gd&&(gd.style.display=""),sm&&(sm.style.display=(typeof q!=="undefined"&&q&&q.length)?"block":"none"),ae()}if(C==="s6"){let s6p=document.getElementById("panel_s6");s6p&&(s6p.style.display="block"),renderCustomerTab()}else if(C==="s2"){let s=document.getElementById("panel_s2");s&&(s.style.display="block"),yt()}else if(C==="s3"){let s=document.getElementById("panel_s3");s&&(s.style.display="block"),Ct()}else if(C==="sc"){let s=document.getElementById("panel_sc");s&&(s.style.display="block"),renderSalesCustomerTab()}else if(C==="s5"){let s=document.getElementById("panel_s5");s&&(s.style.display="block"),Kt()}else if(C==="kode"){let s=document.getElementById("panel_kode");s&&(s.style.display="block")}it()}function it(){let t=document.getElementById("summary");if(!t)return;if(!q||!q.length){t.style.display="none";return}t.style.display="block";let e=document.getElementById("f"),n=document.getElementById("kpi200"),o=document.getElementById("kpi400"),a=document.getElementById("kpi800"),l=document.getElementById("q"),u=document.getElementById("s"),m=document.querySelector(".kpis");if(m&&m.classList.add("fitri-mode"),C==="s3"||C==="s5"||C==="s6"||C==="kode"){t.style.display="none";return}let s=document.getElementById("kpiLbl1"),f=document.getElementById("kpiLbl2"),i=document.getElementById("kpiLbl3"),c=document.getElementById("kpiLbl4"),d=document.getElementById("kpiLbl5"),r=document.getElementById("kpiLbl6");if(C==="s5"){let I=v.size,S=0,L=0,N=0,O=0;ft.forEach(B=>{let E=x(B.Produk).replace(/\s+/g,""),_t=w(B.Jumlah);O+=_t,E.includes("200ML")||E.includes("200")&&!E.includes("400")&&!E.includes("800")?S+=_t:E.includes("400ML")||E.includes("400")&&!E.includes("200")&&!E.includes("800")?L+=_t:(E.includes("800ML")||E.includes("800")&&!E.includes("200")&&!E.includes("400"))&&(N+=_t)});let kt=ft.length;e&&(e.textContent=I.toLocaleString("id-ID")+" Cust"),n&&(n.textContent=S.toLocaleString("id-ID")),o&&(o.textContent=L.toLocaleString("id-ID")),a&&(a.textContent=N.toLocaleString("id-ID")),l&&(l.textContent=O.toLocaleString("id-ID")),u&&(u.textContent=kt.toLocaleString("id-ID")+" Baris"),s&&(s.textContent="CUSTOMER TERPILIH"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY PILIHAN"),r&&(r.textContent="BARIS TRANSAKSI");return}let p=new Set((q||[]).map(I=>I.Customer||I["Kd Customer"]||"").filter(Boolean)).size,g=0,k=0,y=0;q.forEach(I=>{let S=x(I.Produk).replace(/\s+/g,""),L=w(I.Jumlah);S.includes("200ML")||S.includes("200")&&!S.includes("400")&&!S.includes("800")?g+=L:S.includes("400ML")||S.includes("400")&&!S.includes("200")&&!S.includes("800")?k+=L:(S.includes("800ML")||S.includes("800")&&!S.includes("200")&&!S.includes("400"))&&(y+=L)}),e&&(e.textContent=(K.faktur||0).toLocaleString("id-ID")),n&&(n.textContent=g.toLocaleString("id-ID")),o&&(o.textContent=k.toLocaleString("id-ID")),a&&(a.textContent=y.toLocaleString("id-ID")),l&&(l.textContent=(K.qty||0).toLocaleString("id-ID")),u&&(u.textContent=p.toLocaleString("id-ID")),A==="non_fitri"?(s&&(s.textContent="TOTAL FAKTUR RIPA RUPA"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY RIPA RUPA"),r&&(r.textContent="TOTAL CUSTOMER")):A==="all"?(s&&(s.textContent="TOTAL FAKTUR (SEMUA)"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY (SEMUA)"),r&&(r.textContent="TOTAL CUSTOMER")):(s&&(s.textContent="TOTAL FAKTUR FITRI"),f&&(f.textContent="FITRI 200ML"),i&&(i.textContent="FITRI 400ML"),c&&(c.textContent="FITRI 800ML"),d&&(d.textContent="TOTAL QTY FITRI"),r&&(r.textContent="TOTAL CUSTOMER FITRI"))}function Je(){let t=q.length,e=new Map;for(let u=0;u<t;u++){let m=q[u],s=String(m["No. Faktur"]||"").trim()||"__EMPTY__";e.set(s,(e.get(s)||0)+w(m.Total))}let n=new Uint8Array(t),o=new Int32Array(t),a=new Set,l=0;for(let u=0;u<t;u++){let m=q[u],s=String(m["No. Faktur"]||"").trim()||"__EMPTY__";a.has(s)||(a.add(s),n[u]=1,l++,o[u]=l)}et={n:t,nominalMap:e,isFirst:n,noArr:o}}
 
 /* ===== Faktur Batal / Minus markers ===== */
 var voidedFaktur=new Set();
@@ -1759,6 +1835,159 @@ function renderS5HasilTable(container,barEl){
   let mergeSection=document.getElementById("s5MergeSection");
   mergeSection&&(mergeSection.innerHTML='<div class="s5-step-header"><div class="s5-step-badge">5</div><div><b>SAVE / CETAK</b><br><span class="s5-step-sub">Gunakan tombol di atas tabel untuk menyimpan (Excel) atau mencetak hasil penyatuan.</span></div></div>');
 }
+
+/* ===== Sales-Customer: Rekap Sales x Customer ===== */
+var scMonth="", scSales="";
+function scEsc(v){
+  return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function scGetDate(row){
+  var raw=row&&((row.tanggal!=null&&row.tanggal!=="")?row.tanggal:row.Tanggal);
+  return typeof rt==="function"?rt(raw):null;
+}
+function scMonthOf(row){
+  if(row&&row.bulan) return String(row.bulan);
+  var d=scGetDate(row);
+  return d&&!isNaN(d.getTime())?d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"):"";
+}
+function scFitriProduct(prod){
+  var p=x(prod).replace(/\s+/g,"");
+  if(p.includes("FITRI")) return true;
+  return p.includes("200ML")||p.includes("400ML")||p.includes("800ML")||
+         (p.includes("200")&&!p.includes("400")&&!p.includes("800"))||
+         (p.includes("400")&&!p.includes("200")&&!p.includes("800"))||
+         (p.includes("800")&&!p.includes("200")&&!p.includes("400"));
+}
+function scSize(prod){
+  var p=x(prod).replace(/\s+/g,"");
+  if(p.includes("200ML")||p.includes("200")&&!p.includes("400")&&!p.includes("800"))return "200";
+  if(p.includes("400ML")||p.includes("400")&&!p.includes("200")&&!p.includes("800"))return "400";
+  if(p.includes("800ML")||p.includes("800")&&!p.includes("200")&&!p.includes("400"))return "800";
+  return "";
+}
+function scRefreshFilters(){
+  var rows=(typeof mt!=="undefined"&&Array.isArray(mt))?mt:[];
+  var months=new Set(), sales=new Set();
+  rows.forEach(function(r){
+    var f=String(r.faktur||r["No. Faktur"]||"").trim();
+    if(f&&typeof isVoidedFaktur==="function"&&isVoidedFaktur(f))return;
+    if(!scFitriProduct(r.produk||r.Produk))return;
+    var mo=scMonthOf(r), sl=String(r.sales||r.Sales||"").trim();
+    if(mo)months.add(mo); if(sl)sales.add(sl);
+  });
+  var ms=Array.from(months).sort().reverse(), ss=Array.from(sales).sort(function(a,b){return a.localeCompare(b)});
+  var m=document.getElementById("scMonth"),s=document.getElementById("scSales");
+  if(m){
+    var cur=m.value||scMonth||"";
+    m.innerHTML='<option value="">Semua bulan</option>'+ms.map(function(v){
+      return '<option value="'+scEsc(v)+'">'+scEsc(typeof xt==="function"?xt(v):v)+'</option>';
+    }).join("");
+    if(ms.includes(cur))m.value=cur; else {m.value="";scMonth=""}
+  }
+  if(s){
+    var curS=s.value||scSales||"";
+    s.innerHTML='<option value="">Semua sales</option>'+ss.map(function(v){return '<option value="'+scEsc(v)+'">'+scEsc(v)+'</option>'}).join("");
+    if(ss.includes(curS))s.value=curS; else {s.value="";scSales=""}
+  }
+}
+function renderSalesCustomerTab(){
+  var box=document.getElementById("scBox"); if(!box)return;
+  // Ambil pilihan USER terlebih dahulu. Jangan biarkan refresh daftar option
+  // mengembalikan filter ke nilai sebelumnya.
+  var m=document.getElementById("scMonth"),s=document.getElementById("scSales");
+  var selectedMonth=m?m.value||"":scMonth;
+  var selectedSales=s?s.value||"":scSales;
+  scMonth=selectedMonth;
+  scSales=selectedSales;
+  scRefreshFilters();
+  // Pastikan nilai pilihan tetap terpasang setelah option di-refresh.
+  m=document.getElementById("scMonth");
+  s=document.getElementById("scSales");
+  if(m)m.value=scMonth||"";
+  if(s)s.value=scSales||"";
+  var rows=(typeof mt!=="undefined"&&Array.isArray(mt))?mt:[];
+  var map=new Map();
+  rows.forEach(function(r){
+    var f=String(r.faktur||r["No. Faktur"]||"").trim();
+    if(f&&typeof isVoidedFaktur==="function"&&isVoidedFaktur(f))return;
+    var prod=r.produk||r.Produk||"";
+    if(!scFitriProduct(prod))return;
+    var mo=scMonthOf(r);
+    if(scMonth&&mo!==scMonth)return;
+    var sl=String(r.sales||r.Sales||"").trim()||"(Tanpa Sales)";
+    if(scSales&&sl!==scSales)return;
+    var cust=String(r.customer||r.Customer||"").trim()||"(Tanpa Customer)";
+    var addr=String(r.alamat||r.Alamat||"").trim()||"";
+    var key=sl+"||"+cust+"||"+addr;
+    var o=map.get(key);
+    if(!o)o={sales:sl,customer:cust,alamat:addr,q200:0,q400:0,q800:0};
+    var qty=w(r.jumlah!=null?r.jumlah:r.Jumlah);
+    var sz=scSize(prod);
+    if(sz==="200")o.q200+=qty;
+    else if(sz==="400")o.q400+=qty;
+    else if(sz==="800")o.q800+=qty;
+    map.set(key,o);
+  });
+  var data=Array.from(map.values()).map(function(o){o.total=o.q200+o.q400+o.q800;return o});
+  data.sort(function(a,b){
+    var s=a.sales.localeCompare(b.sales); if(s)return s;
+    return a.customer.localeCompare(b.customer);
+  });
+  var totalQty=data.reduce(function(a,r){return a+r.total},0);
+  var cc=document.getElementById("scCustomerCount"),tt=document.getElementById("scTotalQty");
+  if(cc)cc.textContent=data.length.toLocaleString("id-ID");
+  if(tt)tt.textContent=totalQty.toLocaleString("id-ID");
+  var head='<table class="sc-table"><thead><tr>'+
+    '<th style="width:48px">NO</th>'+
+    '<th style="width:110px">SALES</th>'+
+    '<th style="width:220px">TOKO/CUSTOMER</th>'+
+    '<th style="width:190px">ALAMAT</th>'+
+    '<th style="width:145px">QTY PENJUALAN<br>FITRI 200ML</th>'+
+    '<th style="width:145px">QTY PENJUALAN<br>FITRI 400ML</th>'+
+    '<th style="width:145px">QTY PENJUALAN<br>FITRI 800ML</th>'+
+    '<th style="width:125px">TOTAL QTY FITRI</th>'+
+    '</tr></thead><tbody>';
+  var body=data.map(function(r,i){
+    return '<tr><td style="text-align:center">'+(i+1)+'</td>'+
+      '<td class="sales-cell">'+scEsc(r.sales)+'</td>'+
+      '<td class="customer-cell" title="'+scEsc(r.customer)+'">'+scEsc(r.customer)+'</td>'+
+      '<td title="'+scEsc(r.alamat)+'">'+scEsc(r.alamat)+'</td>'+
+      '<td class="num">'+r.q200.toLocaleString("id-ID")+'</td>'+
+      '<td class="num">'+r.q400.toLocaleString("id-ID")+'</td>'+
+      '<td class="num">'+r.q800.toLocaleString("id-ID")+'</td>'+
+      '<td class="num" style="font-weight:800">'+r.total.toLocaleString("id-ID")+'</td></tr>';
+  }).join("");
+  if(!body)body='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Tidak ada data sesuai filter.</td></tr>';
+  var foot='<tfoot><tr>'+
+    '<td colspan="4" style="text-align:right">TOTAL</td>'+
+    '<td class="num">'+data.reduce(function(a,r){return a+r.q200},0).toLocaleString("id-ID")+'</td>'+
+    '<td class="num">'+data.reduce(function(a,r){return a+r.q400},0).toLocaleString("id-ID")+'</td>'+
+    '<td class="num">'+data.reduce(function(a,r){return a+r.q800},0).toLocaleString("id-ID")+'</td>'+
+    '<td class="num">'+totalQty.toLocaleString("id-ID")+'</td></tr></tfoot></table>';
+  box.innerHTML=head+body+foot;
+}
+function resetSalesCustomerFilters(){
+  scMonth="";scSales="";
+  var m=document.getElementById("scMonth"),s=document.getElementById("scSales");
+  if(m)m.value="";if(s)s.value="";
+  renderSalesCustomerTab();
+}
+function exportSalesCustomerExcel(){
+  try{
+    if(typeof XLSX==="undefined"){h("Library Excel belum termuat.","error");return;}
+    var box=document.getElementById("scBox");
+    if(!box){h("Tab Sales-Customer belum siap.","warning");return;}
+    var table=box.querySelector("table");
+    if(!table){h("Tidak ada data untuk diunduh.","warning");return;}
+    var wb=XLSX.utils.book_new();
+    var ws=XLSX.utils.table_to_sheet(table);
+    XLSX.utils.book_append_sheet(wb,ws,"Sales-Customer");
+    XLSX.writeFile(wb,"Sales-Customer.xlsx");
+    h("Excel Sales-Customer berhasil diunduh.","success");
+  }catch(e){h("Gagal mengunduh Excel: "+e.message,"error");}
+}
+
 window.show=Tt;window.applyTheme=Ut;window.toggleTheme=Oe;window.toggleDd=He;window.closeDd=It;window.openMenuPane=je;window.closeMenuPane=Ue;window.onFileChange=Ke;window.processFile=async function(){let t=document.getElementById("file"),e=t&&t.files?t.files[0]:null;if(!e){t&&t.click(),h("Silakan pilih file Excel (.xlsx / .xls)","warning");return}let n=document.getElementById("processFileBtn");n&&(n.disabled=!0,n.classList.add("loading")),bt("Membaca file "+e.name+"...");try{let o=await e.arrayBuffer(),a=me(o);if(!a.rows||!a.rows.length)throw new Error("Tidak ada baris transaksi yang valid.");let l=D&&b?await b.tx.toArray():P.slice(),u=new Set(a.rows.map(s=>s.bulan).filter(Boolean));P=l.filter(s=>!u.has(s.bulan)).concat(a.rows),D&&b&&(u.size&&await b.tx.where("bulan").anyOf([...u]).delete(),await b.tx.bulkPut(a.rows),await b.meta.put({key:"products",value:a.products}),await b.meta.put({key:"sales",value:a.sales}),await b.meta.put({key:"months",value:a.months}),At(()=>P)),document.getElementById("summary").style.display="block",document.getElementById("result").style.display="block";let m=document.getElementById("save");m&&(m.disabled=!1),await j(),Tt("s2"),h("Berhasil memproses "+a.rows.length+" transaksi!","success"),It()}catch(o){h("Gagal memproses file: "+(o.message||o),"error")}finally{_(),n&&(n.disabled=!1,n.classList.remove("loading"))}};window.saveExcel=function(){window.downloadExcel("filtered")};window.downloadExcel=async function(t){Et(),bt("Menyiapkan file Excel..."),setTimeout(async()=>{try{if(t==="all"){let e=D&&b?await b.tx.toArray():P;if(e&&e.length){let n=e.map(o=>({"No. Faktur":o.faktur??"",Produk:o.produk??"",Sales:o.sales??"",Jumlah:w(o.jumlah),Tanggal:o.tanggal??"","Harga Jual":w(o.hargaJual),"Harga Beli":w(o.hargaBeli),Discount:w(o.discount),Total:w(o.total),Pembayaran:o.pembayaran??"",Satuan:o.satuan??"",Customer:o.customer??"","Kd Customer":o.kdCustomer??"",Alamat:o.alamat??""}));Yt(n,"Semua_Data_Transaksi_Excel.xlsx",Z),_(),h("File Semua Data Transaksi ("+n.length+" baris) berhasil diunduh.","success");return}else{_(),h("Tidak ada data transaksi di database.","warning");return}}if(t==="s5"||C==="s5"){try{var snap=buildIntegrasiSnapshot();var name=(typeof buildAutoSetName==="function"?buildAutoSetName():"")||"";exportSnapshotToExcel(snap,name);}catch(err){h("Gagal: "+(err.message||err),"error");}_();return}if(C==="s3"&&F&&F.length){fe(F,"Rekap_Ranking_Qty_Customer_Fitri.xlsx"),_(),h("File Rekap Qty Customer berhasil diunduh.","success");return}if(q&&q.length){let e="Rekap_Penjualan_Fitri.xlsx";A==="all"?e="Rekap_Penjualan_Semua_Produk.xlsx":A==="non_fitri"&&(e="Rekap_Penjualan_Ripa_Rupa.xlsx"),Yt(q,e,Z),_(),h("File "+e+" berhasil diunduh.","success")}else _(),h("Tidak ada data untuk diunduh.","warning")}catch(e){_(),h("Gagal mengunduh: "+e.message,"error")}},50)};window.downloadOfflineHtmlFile=async function(t){t&&t.preventDefault();try{h("Mengunduh file HTML offline...","info");let e=await fetch("/faktur_penjualan_fitri.html");if(!e.ok)throw new Error("Gagal mengambil file HTML ("+e.status+")");let n=await e.text(),o=new Blob([n],{type:"text/html;charset=utf-8"}),a=URL.createObjectURL(o),l=document.createElement("a");l.href=a,l.download="faktur_penjualan_fitri.html",document.body.appendChild(l),l.click(),setTimeout(()=>{document.body.removeChild(l),URL.revokeObjectURL(a)},1e3),h("File HTML mandiri offline berhasil diunduh!","success")}catch{window.location.href="/faktur_penjualan_fitri.html"}};window.onSearchInput=function(){let e=(document.getElementById("searchInput")?.value||"").trim(),n=document.getElementById("quickSearch");n&&n.classList.toggle("has-value",!!e),clearTimeout(Se),Se=setTimeout(async()=>{pt=e.toUpperCase(),mt=await ve(),await j()},250)};window.clearSearch=function(){let t=document.getElementById("searchInput");t&&(t.value=""),pt="",document.getElementById("quickSearch")?.classList.remove("has-value"),j()};function Dt(){let t=Object.values(R).filter(Boolean).length;W&&W!=="ALL"&&t++,A&&A!=="fitri"&&t++;let e=document.getElementById("filterCount");e&&(e.textContent=t?"("+t+")":""),document.getElementById("filterBtn")?.classList.toggle("active",t>0)}window.applyFilters=async function(){let t=document.getElementById("filterFitriBotol")?.value||"ALL";W=t,M=t,R={month:document.getElementById("filterMonth")?.value||"",sales:document.getElementById("filterSales")?.value||"",payment:document.getElementById("filterPayment")?.value||""},Dt(),await j()};window.resetFilters=function(){R={month:"",sales:"",payment:""},s3Date="",W="ALL",M="ALL",A="fitri";try{localStorage.setItem("fp_prod_scope","fitri")}catch{}Jt();let t=document.getElementById("filterFitriBotol");t&&(t.value="ALL"),["filterMonth","filterSales","filterPayment","s3Date"].forEach(e=>{let n=document.getElementById(e);n&&(n.value="")}),Dt(),j()};window.deleteMonthData=async function(){let t=document.getElementById("deleteMonth"),e=t?t.value:"";if(!e)return h("Pilih bulan yang ingin dihapus.","warning");ut("Hapus Data Bulan","Apakah Anda yakin ingin menghapus data bulan "+xt(e)+"?",async()=>{D&&b?(await b.tx.where("bulan").equals(e).delete(),At(()=>P)):P=P.filter(n=>n.bulan!==e),R.month===e&&(R.month=""),await j(),h("Data bulan "+xt(e)+" telah dihapus.","success"),It()})};window.onCustSelectChange=function(t,e,n){if(!e)return;t.checked?(v.add(e),h("\u2713 "+(n||"Customer")+" ditambahkan ke Customer Pilihan","success")):(v.delete(e),h((n||"Customer")+" dilepas dari pilihan","info"));persistSelectedCust();activeSetName="";persistActiveSetName();Pt();let o=t.closest("tr");o&&o.classList.toggle("row-selected",t.checked)};window.toggleSelectAllCust=function(t){let e=t.checked;if(!(!F||!F.length)){if(e){v.clear();for(let n of F)v.add(n.key)}else{for(let n of F)v.delete(n.key)}persistSelectedCust();activeSetName="";persistActiveSetName();Ft(),Pt();let msg;if(e){let d=s3Date||(document.getElementById("s3Date")&&document.getElementById("s3Date").value)||"";msg=d?"Semua "+F.length+" customer di tanggal "+d+" dipilih!":"Semua "+F.length+" customer (tampilan saat ini) dipilih!"}else msg="Pilihan customer pada tampilan ini dibatalkan.";h(msg,"info")}};window.clearSelectedCust=function(){if(v.size===0)return h("Belum ada customer yang dipilih.","info");ut("Hapus Semua Customer Pilihan","Apakah Anda yakin ingin menghapus semua "+v.size+" customer pilihan?",()=>{v.clear();persistSelectedCust();activeSetName="";persistActiveSetName();Pt(),C==="s3"?Ft():C==="s5"&&Kt(),it(),h("Customer pilihan telah dibersihkan.","success")})};window.sendSelectedCustToS5=function(){if(v.size===0)return h("Centang minimal 1 customer terlebih dahulu.","warning");h("Membuka "+v.size+" customer pilihan...","success"),Tt("s5")};window.removeCustFromS5=function(t,e){if(t){v.delete(t);persistSelectedCust();activeSetName="";persistActiveSetName();Pt(),Kt(),it(),h((e||"Customer")+" dihapus dari daftar pilihan","warning")}};window.sortS3=function(t){st===t?J=!J:(st=t,J=t==="customer"||t==="rank"),Ct()};window.applyS3DateFilter=function(){
   s3Date=document.getElementById("s3Date")?.value||"";
   if(C==="s3"){Ct();it();}
