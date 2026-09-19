@@ -2041,7 +2041,9 @@ async function scRefreshFilters(){
     m.innerHTML='<option value="">Semua bulan</option>'+ms.map(function(v){
       return '<option value="'+scEsc(v)+'">'+scEsc(typeof xt==="function"?xt(v):v)+'</option>';
     }).join("");
-    if(ms.includes(cur))m.value=cur; else {m.value="";scMonth=""}
+    if(ms.includes(cur))m.value=cur; else if(cur && !ms.includes(cur)){ m.value=""; scMonth=""; }
+    else if(cur){ m.value=cur; }
+    else { m.value=""; }
   }
   if(s){
     var curS=s.value||scSales||"";
@@ -2155,6 +2157,7 @@ function exportSalesCustomerExcel(){
    Daftar mengikuti filter Sales: customer milik sales tertentu saja. */
 var scSubtab="rekap", scNoTxPage=1, scNoTxPerPage=50, scNoTxQuery="";
 var scNoTxAll=[], scNoTxView=[], scNoTxCacheKey=null, scMasterBase=null;
+var scNoTxDidDefaultMonth=false;
 function scNormName(v){return String(v==null?"":v).replace(/\s+/g," ").trim().toUpperCase();}
 function scNormCode(v){return String(v==null?"":v).replace(/[^0-9A-Za-z]/g,"").toUpperCase();}
 function scNormDigits(v){var d=String(v==null?"":v).replace(/[^0-9]/g,"");if(!d)return "";var t=d.replace(/^0+/,"");return t||"0";}
@@ -2227,10 +2230,13 @@ async function scBuildNoTxList(){
       lastTs:last
     });
   }
+  /* Urutkan TERAKHIR ORDER: tanggal tertua di atas (0 = belum pernah paling atas) */
   out.sort(function(a,b){
-    var x=String(a.sales).localeCompare(String(b.sales));
+    var ta=a.lastTs||0, tb=b.lastTs||0;
+    if(ta!==tb)return ta-tb;
+    var x=String(a.sales).localeCompare(String(b.sales),"id",{sensitivity:"base"});
     if(x)return x;
-    return String(a.nama).localeCompare(String(b.nama));
+    return String(a.nama).localeCompare(String(b.nama),"id",{sensitivity:"base"});
   });
   scNoTxAll=out;
   return out;
@@ -2270,12 +2276,22 @@ function scNoTxSetBadge(n){
 async function renderSalesCustomerNoTx(force){
   var box=document.getElementById("scBoxNoTx"); if(!box)return;
   var m=document.getElementById("scMonth"),s=document.getElementById("scSales");
-  scMonth=m?(m.value||""):scMonth;
-  scSales=s?(s.value||""):scSales;
+  /* Baca dari select NoTx jika ada (satu-baris toolbar), fallback ke shared */
+  var mn=document.getElementById("scMonthNoTx"), sn=document.getElementById("scSalesNoTx");
+  if(mn&&mn.options&&mn.options.length>1){ scMonth=mn.value||""; }
+  else { scMonth=m?(m.value||""):scMonth; }
+  if(sn&&sn.options&&sn.options.length>1){ scSales=sn.value||""; }
+  else { scSales=s?(s.value||""):scSales; }
   await scRefreshFilters();
   m=document.getElementById("scMonth"); s=document.getElementById("scSales");
+  /* Saat pertama buka sub-tab NoTx: default filter ke bulan terbaru (mis. September 2026) */
+  if(!scNoTxDidDefaultMonth && !scMonth){
+    var opts=m?Array.from(m.options).map(function(o){return o.value;}).filter(Boolean):[];
+    if(opts.length){ scMonth=opts[0]; scNoTxDidDefaultMonth=true; }
+  }
   if(m)m.value=scMonth||"";
   if(s)s.value=scSales||"";
+  if(typeof scSyncNoTxSelects==="function")scSyncNoTxSelects();
   var key=(scMonth||"")+"|"+(scSales||"");
   if(force||key!==scNoTxCacheKey||!scNoTxAll.length){
     try{ await scBuildNoTxList(); }catch(e){ scNoTxAll=[]; }
