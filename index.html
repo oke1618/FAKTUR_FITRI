@@ -31,6 +31,27 @@
             --page-btn-border: #D8DEE5;
             --page-active-bg: #1B3A5C;
             --page-active-fg: #fff;
+
+            --tab-card-bg: rgba(27, 58, 92, 0.02);
+            --tab-card-border: transparent;
+            --tab-card-fg: #6B7280;
+            --tab-card-hover-bg: rgba(27, 58, 92, 0.06);
+            --tab-card-hover-fg: #1B3A5C;
+            --tab-card-active-bg: linear-gradient(135deg, rgba(27, 58, 92, 0.10), rgba(198, 138, 46, 0.10));
+            --tab-card-active-border: rgba(27, 58, 92, 0.35);
+            --tab-card-active-fg: #1B3A5C;
+            --tab-card-active-shadow: 0 0 8px rgba(27, 58, 92, 0.18), inset 0 0 5px rgba(27, 58, 92, 0.08);
+
+            /* Kartu data */
+            --data-card-bg: #FFFFFF;
+            --data-card-border: #E2E8F0;
+            --data-card-shadow: 0 1px 3px rgba(18, 41, 67, 0.06);
+            --data-card-hover-shadow: 0 6px 16px rgba(18, 41, 67, 0.12);
+            --item-bg: #EEF2F6;
+            --accent-tempo: #C68A2E;
+            --accent-cash: #1E7A46;
+            --sales-color: #0284C7;
+            --sales-glow: rgba(2, 132, 199, 0.35);
         }
         html.dark {
             --navy: #243B55;
@@ -57,6 +78,27 @@
             --page-btn-border: #2d3a4d;
             --page-active-bg: #3B82F6;
             --page-active-fg: #fff;
+
+            --tab-card-bg: rgba(255, 255, 255, 0.02);
+            --tab-card-border: transparent;
+            --tab-card-fg: #8a94a6;
+            --tab-card-hover-bg: rgba(255, 255, 255, 0.06);
+            --tab-card-hover-fg: #ffffff;
+            --tab-card-active-bg: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(212, 160, 74, 0.12));
+            --tab-card-active-border: rgba(59, 130, 246, 0.45);
+            --tab-card-active-fg: #ffffff;
+            --tab-card-active-shadow: 0 0 10px rgba(59, 130, 246, 0.20), inset 0 0 5px rgba(59, 130, 246, 0.12);
+
+            /* Kartu data (gelap) */
+            --data-card-bg: #1e293b;
+            --data-card-border: #334155;
+            --data-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+            --data-card-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+            --item-bg: #0f172a;
+            --accent-tempo: #F59E0B;
+            --accent-cash: #10B981;
+            --sales-color: #38BDF8;
+            --sales-glow: rgba(56, 189, 248, 0.6);
         }
         * { box-sizing: border-box; }
         body {
@@ -73,7 +115,7 @@
             z-index: 200;
             background: var(--white);
             color: var(--ink);
-            padding: 0 10px;
+            padding: 4px 10px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -99,28 +141,44 @@
             line-height: 1.2;
         }
         header.app .dropdown-toggle .caret { font-size: 9px; }
-        header.app .tab-btn-main {
-            padding: 7px 14px;
-            border: none;
-            background: transparent;
-            color: var(--muted);
-            font-size: 12.5px;
-            font-weight: 600;
-            font-family: inherit;
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .tab-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 15px;
+            border-radius: 8px;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            transition: color 0.15s, border-color 0.15s;
+            font-weight: 500;
+            font-size: 11px;
+            font-family: inherit;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--tab-card-border);
+            background: var(--tab-card-bg);
+            color: var(--tab-card-fg);
         }
-        header.app .tab-btn-main:hover { color: var(--ink); }
-        header.app .tab-btn-main.active {
-            color: var(--navy);
-            border-bottom-color: var(--navy);
+        .tab-card:hover {
+            color: var(--tab-card-hover-fg);
+            background: var(--tab-card-hover-bg);
         }
-        html.dark header.app .tab-btn-main.active {
-            color: #93C5FD;
-            border-bottom-color: #3B82F6;
+        .tab-card.active {
+            color: var(--tab-card-active-fg);
+            background: var(--tab-card-active-bg);
+            border: 1px solid var(--tab-card-active-border);
+            box-shadow: var(--tab-card-active-shadow);
         }
+        .tab-icon {
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .theme-btn {
             background: var(--white);
             border: 1px solid var(--line);
@@ -136,7 +194,6 @@
 
         main { padding: 0; width: 100%; }
 
-        /* Sub-tab bar: SATU BARIS dengan filter di kanan */
         .subtab-bar {
             display: none;
             align-items: center;
@@ -176,7 +233,6 @@
         }
         html.dark .subtab-btn.active { color: #93C5FD; border-bottom-color: #3B82F6; }
 
-        /* Filter bar per sub-tab, ditempatkan di kanan sub-tab bar (satu baris) */
         .subtab-filters {
             display: flex;
             align-items: center;
@@ -245,10 +301,7 @@
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
-        /* Panel Data Fitri tidak lagi butuh filter bar sendiri */
-        .fitri-filter-bar {
-            display: none;
-        }
+        .fitri-filter-bar { display: none; }
 
         .toolbar-bar {
             display: flex;
@@ -276,6 +329,38 @@
             gap: 5px;
         }
         .toolbar-bar .dropdown-toggle .caret { font-size: 9px; }
+
+        .view-toggle {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--white);
+        }
+        .view-toggle button {
+            padding: 3px 10px;
+            border: none;
+            background: transparent;
+            color: var(--muted);
+            font-size: 11.5px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            line-height: 1.4;
+            height: 26px;
+            transition: background 0.15s, color 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .view-toggle button:hover { background: var(--row-alt); color: var(--ink); }
+        .view-toggle button.active {
+            background: var(--navy);
+            color: #fff;
+        }
+        html.dark .view-toggle button.active { background: #3B82F6; color: #fff; }
+        .view-toggle button + button { border-left: 1px solid var(--line); }
 
         .dropdown-menu.col-menu {
             min-width: 252px;
@@ -584,6 +669,214 @@
         }
         td.num, th.num { text-align: right; }
 
+        /* ===== MODE KARTU ===== */
+        .card-view {
+            display: none;
+            padding: 10px;
+            overflow: auto;
+            max-height: calc(100vh - 110px);
+            width: 100%;
+        }
+        .card-view.active { display: block; }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+
+        /* Kartu data: 1 No.Faktur = 1 kartu */
+        .data-card {
+            background: var(--data-card-bg);
+            border: 1px solid var(--data-card-border);
+            border-radius: 8px;
+            display: flex;
+            overflow: hidden;
+            box-shadow: var(--data-card-shadow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            min-width: 0;
+        }
+        .data-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--data-card-hover-shadow);
+        }
+
+        /* Accent bar kiri: mengikuti jenis pembayaran */
+        .data-card .accent-bar {
+            width: 4px;
+            flex-shrink: 0;
+        }
+        .data-card.tempo .accent-bar { background-color: var(--accent-tempo); }
+        .data-card.cash .accent-bar { background-color: var(--accent-cash); }
+
+        .dc-content {
+            padding: 10px 12px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* Header: No.Faktur + tgl (kiri) · Badge (kanan) */
+        .dc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 6px;
+            gap: 6px;
+        }
+        .dc-invoice-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .dc-faktur {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dc-tgl {
+            font-size: 10px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        /* Badge Cash/Tempo */
+        .dc-badge {
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .dc-badge.tempo {
+            background: rgba(198, 138, 46, 0.12);
+            color: var(--accent-tempo);
+        }
+        .dc-badge.cash {
+            background: rgba(30, 122, 70, 0.12);
+            color: var(--accent-cash);
+        }
+        html.dark .dc-badge.tempo {
+            background: rgba(245, 158, 11, 0.12);
+        }
+        html.dark .dc-badge.cash {
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        /* Sales name dengan efek glow */
+        .dc-sales {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--sales-color);
+            text-align: right;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 8px var(--sales-glow);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+        }
+        .dc-sales::before {
+            content: "👤";
+            font-size: 10px;
+            filter: brightness(1.2);
+        }
+
+        /* Store info */
+        .dc-store {
+            margin-bottom: 8px;
+        }
+        .dc-customer {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--ink);
+            margin: 0 0 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dc-alamat {
+            font-size: 10px;
+            color: var(--muted);
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Item list (kotak terpisah) */
+        .dc-items {
+            background: var(--item-bg);
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .dc-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10.5px;
+            gap: 6px;
+        }
+        .dc-item-name {
+            color: var(--ink);
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+        .dc-item-qty {
+            color: var(--muted);
+            width: 26px;
+            text-align: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .dc-item-price {
+            color: var(--muted);
+            text-align: right;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* Footer: Total qty (kiri) · Total harga (kanan) */
+        .dc-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 8px;
+            border-top: 1px dashed var(--line);
+            margin-top: auto;
+            gap: 6px;
+        }
+        .dc-qty {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .dc-total {
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .data-card.tempo .dc-total { color: var(--accent-tempo); }
+        .data-card.cash .dc-total { color: var(--accent-cash); }
+
         #subtab-datafitri table {
             width: 100%;
             table-layout: auto;
@@ -592,7 +885,6 @@
             max-height: calc(100vh - 140px);
         }
 
-        /* ===== SUBTAB SALES/CUSTOMER ===== */
         #subtab-sales table {
             width: 100%;
             table-layout: auto;
@@ -615,7 +907,6 @@
         #subtab-sales tbody td.strong { font-weight: 700; color: var(--navy); }
         html.dark #subtab-sales tbody td.strong { color: #93C5FD; }
 
-        /* ===== SUBTAB RANKING CUSTOMER ===== */
         #subtab-ranking table {
             width: 100%;
             table-layout: auto;
@@ -646,7 +937,6 @@
         }
         html.dark #subtab-ranking tbody td.total-cell { color: #93C5FD; }
 
-        /* Tautan tanggal di kolom TGL ORDER */
         .tgl-link {
             color: var(--navy);
             text-decoration: underline;
@@ -1019,7 +1309,6 @@
             width: 100%;
         }
 
-        /* ===== MODAL RINCIAN ORDER ===== */
         #rincianModal .box {
             background: var(--white);
             color: var(--ink);
@@ -1107,13 +1396,38 @@
         tbody td { border-right: 1px solid var(--line); }
         thead th { text-align: center; }
         td.ctr, th.ctr { text-align: center; }
+
+        /* ===== HAPUS GARIS HORISONTAL DI BAR SUB-TAB ===== */
+        .subtab-bar {
+            border-bottom: none !important;
+        }
+        .subtab-btn,
+        .subtab-btn:hover,
+        .subtab-btn:focus,
+        .subtab-btn.active,
+        .subtab-btn.active:hover {
+            border-bottom: none !important;
+            box-shadow: none !important;
+            margin-bottom: 0 !important;
+        }
+        html.dark .subtab-btn.active {
+            border-bottom: none !important;
+        }
     </style>
 </head>
 <body>
 
     <header class="app">
-        <button type="button" class="tab-btn-main active" data-tab="semua">Semua Data</button>
-        <button type="button" class="tab-btn-main" data-tab="fitri">Fitri</button>
+        <div class="nav-tabs">
+            <button type="button" class="tab-card active" data-tab="semua">
+                <span class="tab-icon">🗄️</span>
+                <span>Semua Data</span>
+            </button>
+            <button type="button" class="tab-card" data-tab="fitri">
+                <span class="tab-icon">👤</span>
+                <span>Fitri</span>
+            </button>
+        </div>
         <div class="header-right">
             <div class="dropdown" id="actionDropdown">
                 <button class="dropdown-toggle" id="dropdownToggle">
@@ -1145,7 +1459,6 @@
     </header>
 
     <main>
-        <!-- Sub-tab bar: SATU BARIS — sub-tab di kiri, filter di kanan -->
         <div class="subtab-bar" id="subtabBar">
             <div class="subtab-tabs">
                 <button type="button" class="subtab-btn active" data-subtab="datafitri">Data Fitri</button>
@@ -1153,7 +1466,6 @@
                 <button type="button" class="subtab-btn" data-subtab="ranking">🏆 Ranking Customer</button>
             </div>
             <div class="subtab-filters">
-                <!-- Filter untuk Data Fitri -->
                 <div class="filter-group active" data-filter-for="datafitri">
                     <div class="subtab-filter-field">
                         <select id="ffSales" title="Filter sales" aria-label="Filter sales"><option value="">Semua Sales</option></select>
@@ -1167,7 +1479,6 @@
                     <button type="button" class="btn secondary" id="btnResetFitri" title="Reset filter"><span class="ico">&#8635;</span><span>Reset</span></button>
                 </div>
 
-                <!-- Filter untuk Sales/Customer -->
                 <div class="filter-group" data-filter-for="sales">
                     <div class="subtab-filter-field">
                         <select id="scBulan" title="Filter bulan" aria-label="Filter bulan"><option value="">Semua Bulan</option></select>
@@ -1178,7 +1489,6 @@
                     <button type="button" class="btn secondary" id="btnResetSales" title="Reset filter"><span class="ico">&#8635;</span><span>Reset</span></button>
                 </div>
 
-                <!-- Filter untuk Ranking Customer -->
                 <div class="filter-group" data-filter-for="ranking">
                     <div class="subtab-filter-field">
                         <select id="rkSales" title="Filter sales" aria-label="Filter sales"><option value="">Semua Sales</option></select>
@@ -1195,7 +1505,6 @@
             </div>
         </div>
 
-        <!-- ===== TAB: SEMUA DATA ===== -->
         <div class="tab-panel active" id="tab-semua">
         <div class="toolbar-bar">
             <div class="dropdown" id="filterDropdown">
@@ -1255,11 +1564,16 @@
                         <div class="col-note">Kolom yang tidak dicentang disembunyikan dari tabel.</div>
                     </div>
                 </div>
+
+                <div class="view-toggle" id="viewToggle" role="group" aria-label="Mode tampilan">
+                    <button type="button" class="view-btn active" data-view="table" title="Mode tabel">📋 Tabel</button>
+                    <button type="button" class="view-btn" data-view="card" title="Mode kartu">🗂️ Kartu</button>
+                </div>
             </div>
         </div>
 
         <div class="table-panel">
-            <div class="table-wrap">
+            <div class="table-wrap" id="tableViewWrap">
                 <table>
                     <thead>
                         <tr>
@@ -1283,6 +1597,11 @@
                     <tbody id="tbody"></tbody>
                 </table>
             </div>
+
+            <div class="card-view" id="cardViewWrap">
+                <div class="card-grid" id="cardGrid"></div>
+            </div>
+
             <div class="empty-msg" id="emptyMsg" style="display: block;">Tidak ada data yang cocok dengan filter.</div>
             <div class="pagination" id="pagination">
                 <div class="pagination-info" id="pageInfo">Menampilkan 0 data</div>
@@ -1300,10 +1619,8 @@
         </div>
         </div>
 
-        <!-- ===== TAB: FITRI (berisi 3 sub-tab) ===== -->
         <div class="tab-panel" id="tab-fitri">
 
-            <!-- SUB-TAB: DATA FITRI -->
             <div class="subtab-panel active" id="subtab-datafitri">
                 <div class="table-panel">
                     <div class="table-wrap">
@@ -1341,7 +1658,6 @@
                 </div>
             </div>
 
-            <!-- SUB-TAB: SALES/CUSTOMER -->
             <div class="subtab-panel" id="subtab-sales">
                 <div class="sc-cards" id="scCards">
                     <div class="sc-card">
@@ -1409,7 +1725,6 @@
                 </div>
             </div>
 
-            <!-- SUB-TAB: RANKING CUSTOMER -->
             <div class="subtab-panel" id="subtab-ranking">
                 <div class="table-panel">
                     <div class="table-wrap">
@@ -1567,7 +1882,6 @@
         </div>
     </div>
 
-    <!-- ===== MODAL RINCIAN ORDER PER TANGGAL ===== -->
     <div class="modal-overlay" id="rincianModal">
         <div class="box">
             <div class="rincian-head">
@@ -1603,9 +1917,9 @@
         const STORAGE_KEY = 'bank_data_penjualan_v3';
         const IDB_NAME = 'BankDataPenjualan';
         const IDB_STORE = 'data';
+        const VIEW_MODE_KEY = 'bdp-view-mode-v1';
         try { localStorage.removeItem('bank_data_penjualan_v2'); } catch (e) {}
 
-        // ===== IndexedDB HELPERS =====
         function openIDB() {
             return new Promise((resolve, reject) => {
                 const req = indexedDB.open(IDB_NAME, 1);
@@ -1641,7 +1955,7 @@
                     req.onsuccess = function() { resolve(); };
                     req.onerror = function() { reject(req.error); };
                 });
-            } catch (e) { /* diamkan; localStorage tetap jadi fallback */ }
+            } catch (e) { }
         }
 
         function saveDataToStorage() {
@@ -1660,7 +1974,6 @@
             return null;
         }
 
-        // ===== DATA AWAL =====
         const _loadedLocal = loadDataFromStorageSync();
         const localStorageHadKey = _loadedLocal !== null;
         let DATA = localStorageHadKey ? _loadedLocal : [];
@@ -1721,7 +2034,6 @@
             { kode: "", nama: "ZEN SULPHUR", harga: 3000 }
         ];
 
-        // ===== UTILITY =====
         function fmtRupiah(n) {
             n = Math.round(n || 0);
             return 'Rp ' + n.toLocaleString('id-ID');
@@ -1774,7 +2086,6 @@
             return (nama || '').toUpperCase().includes('FITRI');
         }
 
-        // ===== FILTER OPTIONS =====
         function rebuildFilterOptions() {
             const salesSet = new Set();
             const periodSet = new Set();
@@ -1841,7 +2152,6 @@
             return rows;
         }
 
-        // ===== HAPUS DATA =====
         function hapusTampilan() {
             const filtered = getFiltered();
             if (filtered.length === 0) {
@@ -1875,7 +2185,6 @@
             }
         }
 
-        // ===== PAGINATION (Semua Data) =====
         let currentPage = 1;
         let pageSize = 20;
 
@@ -1934,7 +2243,6 @@
             });
         }
 
-        // ===== PREFIX STATE UNTUK GRUP No.Faktur =====
         function buildFakturPrefix(rows) {
             const n = rows.length;
             const groupAt = new Array(n);
@@ -1954,7 +2262,6 @@
             return { groupAt: groupAt, shownAt: shownAt };
         }
 
-        // ===== RENDER (Semua Data) =====
         function nominalMap(rows) {
             const src = Array.isArray(rows) ? rows : DATA;
             const m = {};
@@ -1994,10 +2301,119 @@
               `;
         }
 
+        // ====== Kartu data: 1 No.Faktur = 1 kartu ======
+        function isColHidden(i) {
+            return hiddenCols.indexOf(i) !== -1;
+        }
+
+        function buildFakturGroups(rows) {
+            const groups = [];
+            const map = new Map();
+            rows.forEach(r => {
+                const key = String(r['No.Faktur'] || '');
+                if (!map.has(key)) {
+                    map.set(key, {
+                        key: key,
+                        noFaktur: r['No.Faktur'] || '',
+                        tanggal: r.Tanggal || '',
+                        sales: r.Sales || '',
+                        customer: r.Customer || '',
+                        alamat: r.Alamat || '',
+                        pembayaran: r.Pembayaran || 'Tempo',
+                        items: []
+                    });
+                    groups.push(map.get(key));
+                }
+                map.get(key).items.push(r);
+            });
+            return groups;
+        }
+
+        function dataCardHtml(group) {
+            const isCash = String(group.pembayaran).toLowerCase() === 'cash';
+            const payClass = isCash ? 'cash' : 'tempo';
+
+            // Header: No.Faktur + tgl (kiri) · Badge (kanan)
+            const fakturText = isColHidden(3) ? '' : escHtml(group.noFaktur);
+            const tglText = isColHidden(1) ? '' : escHtml(fmtTanggal(group.tanggal));
+            const badgeHtml = isColHidden(14) ? '' :
+                `<span class="dc-badge ${payClass}">${escHtml(group.pembayaran)}</span>`;
+            const headerHtml = (fakturText || tglText || badgeHtml) ? `
+                <div class="dc-header">
+                    <div class="dc-invoice-info">
+                        ${fakturText ? `<span class="dc-faktur">${fakturText}</span>` : ''}
+                        ${tglText ? `<span class="dc-tgl">${tglText}</span>` : ''}
+                    </div>
+                    ${badgeHtml}
+                </div>` : '';
+
+            // Sales (kanan)
+            const salesHtml = isColHidden(2) ? '' :
+                `<div class="dc-sales">${escHtml(group.sales)}</div>`;
+
+            // Store
+            const custText = isColHidden(12) ? '' : escHtml(group.customer);
+            const alamatText = isColHidden(13) ? '' : escHtml(group.alamat);
+            const storeHtml = (custText || alamatText) ? `
+                <div class="dc-store">
+                    ${custText ? `<div class="dc-customer">${custText}</div>` : ''}
+                    ${alamatText ? `<div class="dc-alamat">${alamatText}</div>` : ''}
+                </div>` : '';
+
+            // Items
+            const showProduk = !isColHidden(4);
+            const showJumlah = !isColHidden(5);
+            const showHarga = !isColHidden(8);
+            let itemsHtml = '';
+            if (showProduk || showJumlah || showHarga) {
+                itemsHtml = '<div class="dc-items">' + group.items.map(it => {
+                    const p = showProduk ? `<span class="dc-item-name">${escHtml(it.Produk || '')}</span>` : '';
+                    const j = showJumlah ? `<span class="dc-item-qty">${Number(it.Jumlah) || 0}</span>` : '';
+                    const h = showHarga ? `<span class="dc-item-price">${escHtml(fmtRupiah(it['Harga Jual'] || 0))}</span>` : '';
+                    return `<div class="dc-item">${p}${j}${h}</div>`;
+                }).join('') + '</div>';
+            }
+
+            // Footer
+            let totalQty = 0;
+            const satuanSet = new Set();
+            group.items.forEach(it => {
+                totalQty += Number(it.Jumlah) || 0;
+                if (it.Satuan) satuanSet.add(String(it.Satuan).trim());
+            });
+            const satuanText = satuanSet.size === 1 ? Array.from(satuanSet)[0] : '';
+            let qtyText = '';
+            if (!isColHidden(5)) {
+                qtyText = String(totalQty);
+                if (!isColHidden(6) && satuanText) qtyText += ' ' + escHtml(satuanText);
+            } else if (!isColHidden(6) && satuanText) {
+                qtyText = escHtml(satuanText);
+            }
+            let totalRupiah = 0;
+            group.items.forEach(it => { totalRupiah += Number(it.Total) || 0; });
+            const totalHtml = isColHidden(10) ? '' :
+                `<span class="dc-total">${escHtml(fmtRupiah(totalRupiah))}</span>`;
+            const footerHtml = (qtyText || totalHtml) ?
+                `<div class="dc-footer">${qtyText ? `<span class="dc-qty">${qtyText}</span>` : '<span></span>'}${totalHtml}</div>` : '';
+
+            return `<div class="data-card ${payClass}">
+                <div class="accent-bar ${payClass}"></div>
+                <div class="dc-content">
+                    ${headerHtml}
+                    ${salesHtml}
+                    ${storeHtml}
+                    ${itemsHtml}
+                    ${footerHtml}
+                </div>
+            </div>`;
+        }
+
         function render() {
             const rows = getFiltered();
             const tbody = document.getElementById('tbody');
             const emptyMsg = document.getElementById('emptyMsg');
+            const cardGrid = document.getElementById('cardGrid');
+
             pageSize = getPageSize();
             const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
             if (currentPage > totalPages) currentPage = totalPages;
@@ -2005,6 +2421,7 @@
 
             if (rows.length === 0) {
                 tbody.innerHTML = '';
+                cardGrid.innerHTML = '';
                 emptyMsg.style.display = 'block';
             } else {
                 emptyMsg.style.display = 'none';
@@ -2018,7 +2435,6 @@
                 });
 
                 const prefix = buildFakturPrefix(rows);
-                const nominal = nominalMap();
 
                 tbody.innerHTML = pageRows.map((r, i) => {
                     const idx = startIdx + i;
@@ -2027,9 +2443,12 @@
                     const groupClass = isDup ? ('faktur-g' + (prefix.groupAt[idx] % 2)) : '';
                     const showNominal = prefix.shownAt[idx];
                     const showFaktur = isDup ? showNominal : true;
-                    const nom = nominal[key] || (Number(r.Total) || 0);
+                    const nom = 0;
                     return barisHtml(r, idx + 1, nom, showNominal, showFaktur, groupClass, isDup);
                 }).join('');
+
+                const groups = buildFakturGroups(pageRows);
+                cardGrid.innerHTML = groups.map(g => dataCardHtml(g)).join('');
             }
 
             renderPagination(rows.length);
@@ -2042,7 +2461,6 @@
             if (typeof renderRankingCustomer === 'function') renderRankingCustomer();
         }
 
-        // ===== FILTER KOLOM =====
         const KOLOM_TABEL = [
             { i: 0, label: 'No' },
             { i: 1, label: 'Tanggal' },
@@ -2096,17 +2514,20 @@
             if (cb.checked) hiddenCols = hiddenCols.filter(x => x !== i);
             else if (hiddenCols.indexOf(i) === -1) hiddenCols.push(i);
             applyColVisibility();
+            render();
         });
 
         document.getElementById('btnColAll').addEventListener('click', function() {
             hiddenCols = [];
             buildColMenu();
             applyColVisibility();
+            render();
         });
         document.getElementById('btnColReset').addEventListener('click', function() {
             hiddenCols = [];
             buildColMenu();
             applyColVisibility();
+            render();
         });
         (function initColDropdown() {
             const colToggle = document.getElementById('colToggle');
@@ -2124,7 +2545,34 @@
             colMenu.addEventListener('click', function(e) { e.stopPropagation(); });
         })();
 
-        // ===== DROPDOWN =====
+        let viewMode = 'table';
+        try {
+            const savedView = localStorage.getItem(VIEW_MODE_KEY);
+            if (savedView === 'card' || savedView === 'table') viewMode = savedView;
+        } catch (e) {}
+
+        function applyViewMode(mode) {
+            viewMode = (mode === 'card') ? 'card' : 'table';
+            try { localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch (e) {}
+            const tableWrap = document.getElementById('tableViewWrap');
+            const cardWrap = document.getElementById('cardViewWrap');
+            const btns = document.querySelectorAll('#viewToggle .view-btn');
+            btns.forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
+            if (viewMode === 'card') {
+                tableWrap.style.display = 'none';
+                cardWrap.classList.add('active');
+            } else {
+                tableWrap.style.display = '';
+                cardWrap.classList.remove('active');
+            }
+        }
+
+        document.querySelectorAll('#viewToggle .view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                applyViewMode(this.dataset.view);
+            });
+        });
+
         const toggleBtn = document.getElementById('dropdownToggle');
         const menu = document.getElementById('dropdownMenu');
         const filterToggle = document.getElementById('filterToggle');
@@ -2171,7 +2619,6 @@
             e.stopPropagation();
         });
 
-        // ===== FILTER EVENTS (Semua Data) =====
         function filterChanged() {
             currentPage = 1;
             render();
@@ -2215,7 +2662,6 @@
             hapusSemua();
         });
 
-        // ===== FAKTUR FORM (multi-item) =====
         let itemRows = [];
 
         function updateBayarUI() {
@@ -2422,7 +2868,6 @@
             renderAll();
         });
 
-        // ===== DOWNLOAD MODAL =====
         document.getElementById('btnExport').addEventListener('click', function(e) {
             e.preventDefault();
             rebuildFilterOptions();
@@ -2498,7 +2943,6 @@
             document.getElementById('downloadModal').classList.remove('show');
         });
 
-        // ===== IMPORT EXCEL =====
         function toNum(v) {
             if (v === null || v === undefined || v === '') return 0;
             if (typeof v === 'number') return isFinite(v) ? v : 0;
@@ -2742,7 +3186,6 @@
             e.target.value = '';
         });
 
-        // ===== THEME =====
         const themeToggle = document.getElementById('themeToggle');
         function applyTheme(dark) {
             document.documentElement.classList.toggle('dark', dark);
@@ -2763,7 +3206,6 @@
             applyTheme(dark);
         })();
 
-        // ===== SUB-TAB: DATA FITRI =====
         let currentPageFitri = 1;
 
         function getFitriRows() {
@@ -2918,7 +3360,6 @@
             renderPaginationFitri(rows.length);
         }
 
-        // ===== SUB-TAB: SALES/CUSTOMER =====
         let currentPageSales = 1;
 
         function fitriSizeOf(nama) {
@@ -3178,7 +3619,6 @@
             });
         })();
 
-        // ===== SUB-TAB: RANKING CUSTOMER =====
         let currentPageRanking = 1;
 
         function getRankingScope() {
@@ -3413,7 +3853,6 @@
             });
         })();
 
-        // ===== MODAL RINCIAN ORDER =====
         const rincianModal = document.getElementById('rincianModal');
 
         function openRincianModal(customerKey) {
@@ -3491,9 +3930,8 @@
             if (key) openRincianModal(key);
         });
 
-        // ===== TAB SWITCHING (utama + sub) =====
         function switchMainTab(tab) {
-            document.querySelectorAll('header.app .tab-btn-main').forEach(b => {
+            document.querySelectorAll('header.app .tab-card').forEach(b => {
                 b.classList.toggle('active', b.dataset.tab === tab);
             });
             document.querySelectorAll('main > .tab-panel').forEach(p => {
@@ -3520,14 +3958,13 @@
             else if (sub === 'ranking') renderRankingCustomer();
         }
 
-        // Fungsi untuk menampilkan group filter yang sesuai dengan sub-tab aktif
         function switchFilterGroup(sub) {
             document.querySelectorAll('.subtab-filters .filter-group').forEach(g => {
                 g.classList.toggle('active', g.dataset.filterFor === sub);
             });
         }
 
-        document.querySelectorAll('header.app .tab-btn-main').forEach(btn => {
+        document.querySelectorAll('header.app .tab-card').forEach(btn => {
             btn.addEventListener('click', function() {
                 switchMainTab(this.dataset.tab);
             });
@@ -3547,7 +3984,6 @@
             });
         });
 
-        // ===== FILTER EVENTS (Data Fitri) =====
         function fitriFilterChanged() {
             currentPageFitri = 1;
             renderFitri();
@@ -3567,16 +4003,15 @@
             renderFitri();
         });
 
-        // ===== INIT =====
         buildColMenu();
         applyColVisibility();
+        applyViewMode(viewMode);
         rebuildFilterOptions();
         render();
         renderFitri();
         renderSalesCustomer();
         renderRankingCustomer();
 
-        // ===== SINKRON IndexedDB ↔ localStorage =====
         (async function migrateToIDB() {
             try {
                 const fromIDB = await idbGet();
