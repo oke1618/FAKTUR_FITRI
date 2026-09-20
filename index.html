@@ -2677,7 +2677,7 @@
             colMenu.addEventListener('click', function(e) { e.stopPropagation(); });
         })();
 
-        let viewMode = 'table';
+        let viewMode = 'card';
         try {
             const savedView = localStorage.getItem(VIEW_MODE_KEY);
             if (savedView === 'card' || savedView === 'table') viewMode = savedView;
@@ -3328,12 +3328,11 @@
             applyTheme(!document.documentElement.classList.contains('dark'));
         });
         (function initTheme() {
-            let dark = false;
+            let dark = true;
             try {
                 const saved = localStorage.getItem('bdp-theme');
                 if (saved === 'dark') dark = true;
                 else if (saved === 'light') dark = false;
-                else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) dark = true;
             } catch (e) {}
             applyTheme(dark);
         })();
