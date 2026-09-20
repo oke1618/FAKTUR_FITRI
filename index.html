@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bank Data Penjualan</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --navy: #1B3A5C;
@@ -191,6 +192,23 @@
             transition: background 0.2s;
         }
         .theme-btn:hover { background: var(--row-alt); }
+
+        .sync-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: var(--white);
+            color: var(--muted);
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .sync-badge.syncing { color: var(--warn); border-color: var(--warn); }
+        .sync-badge.synced { color: var(--good); border-color: var(--good); }
+        .sync-badge.offline { color: var(--danger); border-color: var(--danger); }
 
         main { padding: 0; width: 100%; }
 
@@ -1454,6 +1472,7 @@
                     </button>
                 </div>
             </div>
+            <span class="sync-badge" id="syncStatus" title="Status sinkronisasi">☁️ …</span>
             <button type="button" class="theme-btn" id="themeToggle" title="Mode terang / gelap">🌙</button>
         </div>
     </header>
@@ -1961,6 +1980,7 @@
         function saveDataToStorage() {
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); } catch (e) {}
             idbSet(DATA).catch(err => console.warn('IndexedDB save gagal:', err));
+            schedulePush();
         }
 
         function loadDataFromStorageSync() {
@@ -1977,6 +1997,119 @@
         const _loadedLocal = loadDataFromStorageSync();
         const localStorageHadKey = _loadedLocal !== null;
         let DATA = localStorageHadKey ? _loadedLocal : [];
+
+        // ---------- Sinkronisasi online (Supabase) ----------
+        // Semua data disimpan sebagai satu blob JSON di satu baris tabel Supabase,
+        // sehingga device lain (HP, laptop, dll) bisa membaca perubahan yang sama.
+        const SUPABASE_URL = 'https://fdjgsybhsdavbjgnxeve.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_DagU-Vwmj-3cVBpx_XBHtg_6mpa1cjH';
+        const SYNC_TABLE = 'faktur_fitri_sync';
+        const SYNC_ROW_ID = 'main';
+        const LAST_SYNC_KEY = 'bdp-last-sync-v1';
+        const CLIENT_ID_KEY = 'bdp-client-id-v1';
+
+        let CLIENT_ID = null;
+        try {
+            CLIENT_ID = localStorage.getItem(CLIENT_ID_KEY);
+            if (!CLIENT_ID) {
+                CLIENT_ID = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+                localStorage.setItem(CLIENT_ID_KEY, CLIENT_ID);
+            }
+        } catch (e) { CLIENT_ID = 'client-' + Date.now(); }
+
+        let supabaseClient = null;
+        try {
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (e) { console.warn('Gagal inisialisasi Supabase:', e); }
+
+        function setSyncStatus(state) {
+            const el = document.getElementById('syncStatus');
+            if (!el) return;
+            el.classList.remove('syncing', 'synced', 'offline');
+            if (state === 'syncing') { el.classList.add('syncing'); el.textContent = '☁️ Menyinkron...'; el.title = 'Sedang menyinkron ke cloud'; }
+            else if (state === 'synced') { el.classList.add('synced'); el.textContent = '☁️ Tersinkron'; el.title = 'Data tersinkron dengan cloud'; }
+            else if (state === 'offline') { el.classList.add('offline'); el.textContent = '⚠️ Offline'; el.title = 'Gagal terhubung ke cloud, memakai data lokal'; }
+            else { el.textContent = '☁️ …'; el.title = 'Status sinkronisasi'; }
+        }
+
+        async function pullCloud(force) {
+            if (!supabaseClient) { setSyncStatus('offline'); return; }
+            try {
+                const { data, error } = await supabaseClient
+                    .from(SYNC_TABLE)
+                    .select('payload, updated_at, origin_client')
+                    .eq('id', SYNC_ROW_ID)
+                    .maybeSingle();
+                if (error) throw error;
+
+                if (!data) { setSyncStatus('synced'); return; }
+
+                const localTs = localStorage.getItem(LAST_SYNC_KEY);
+                const remoteIsOwn = data.origin_client === CLIENT_ID;
+                const remoteIsNewer = !localTs || new Date(data.updated_at) > new Date(localTs);
+
+                if (!force && (!remoteIsNewer || remoteIsOwn)) {
+                    if (remoteIsNewer) localStorage.setItem(LAST_SYNC_KEY, data.updated_at);
+                    setSyncStatus('synced');
+                    return;
+                }
+
+                if (Array.isArray(data.payload)) {
+                    DATA = data.payload;
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DATA)); } catch (e) {}
+                    idbSet(DATA).catch(() => {});
+                    localStorage.setItem(LAST_SYNC_KEY, data.updated_at);
+                    if (typeof rebuildFilterOptions === 'function') rebuildFilterOptions();
+                    if (typeof renderAll === 'function') renderAll();
+                }
+                setSyncStatus('synced');
+            } catch (e) {
+                console.warn('Pull dari cloud gagal:', e);
+                setSyncStatus('offline');
+            }
+        }
+
+        let _pushTimer = null;
+        function schedulePush() {
+            setSyncStatus('syncing');
+            clearTimeout(_pushTimer);
+            _pushTimer = setTimeout(pushCloud, 700);
+        }
+
+        async function pushCloud() {
+            if (!supabaseClient) { setSyncStatus('offline'); return; }
+            try {
+                const nowIso = new Date().toISOString();
+                const { error } = await supabaseClient
+                    .from(SYNC_TABLE)
+                    .upsert({ id: SYNC_ROW_ID, payload: DATA, origin_client: CLIENT_ID, updated_at: nowIso });
+                if (error) throw error;
+                localStorage.setItem(LAST_SYNC_KEY, nowIso);
+                setSyncStatus('synced');
+            } catch (e) {
+                console.warn('Push ke cloud gagal:', e);
+                setSyncStatus('offline');
+            }
+        }
+
+        function initSync() {
+            if (!supabaseClient) { setSyncStatus('offline'); return; }
+            setSyncStatus('syncing');
+            pullCloud(false);
+            try {
+                supabaseClient
+                    .channel('faktur_fitri_sync_changes')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: SYNC_TABLE, filter: `id=eq.${SYNC_ROW_ID}` }, function() {
+                        pullCloud(false);
+                    })
+                    .subscribe();
+            } catch (e) { console.warn('Realtime subscribe gagal:', e); }
+
+            window.addEventListener('online', function() { pullCloud(false); });
+            window.addEventListener('offline', function() { setSyncStatus('offline'); });
+        }
 
         const MASTER_PRODUK = [
             { kode: "", nama: "AGAR LUMBA HEMAT COKLAT", harga: 25000 },
@@ -2177,8 +2310,7 @@
             }
             if (confirm(`Yakin ingin menghapus SEMUA data (${DATA.length} baris)?`)) {
                 DATA = [];
-                try { localStorage.setItem(STORAGE_KEY, '[]'); } catch (e) {}
-                idbSet([]).catch(err => console.warn('Gagal mengosongkan IndexedDB:', err));
+                saveDataToStorage();
                 rebuildFilterOptions();
                 renderAll();
                 closeAllMenus();
@@ -4011,6 +4143,8 @@
         renderFitri();
         renderSalesCustomer();
         renderRankingCustomer();
+
+        initSync();
 
         (async function migrateToIDB() {
             try {
