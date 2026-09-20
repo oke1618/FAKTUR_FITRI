@@ -3330,9 +3330,17 @@
         (function initTheme() {
             let dark = true;
             try {
-                const saved = localStorage.getItem('bdp-theme');
-                if (saved === 'dark') dark = true;
-                else if (saved === 'light') dark = false;
+                const THEME_MIGRATION_KEY = 'bdp-theme-migrated-dark-v1';
+                if (!localStorage.getItem(THEME_MIGRATION_KEY)) {
+                    // Migrasi satu kali: paksa default gelap meski sebelumnya tersimpan 'light'.
+                    localStorage.setItem(THEME_MIGRATION_KEY, '1');
+                    localStorage.setItem('bdp-theme', 'dark');
+                    dark = true;
+                } else {
+                    const saved = localStorage.getItem('bdp-theme');
+                    if (saved === 'dark') dark = true;
+                    else if (saved === 'light') dark = false;
+                }
             } catch (e) {}
             applyTheme(dark);
         })();
